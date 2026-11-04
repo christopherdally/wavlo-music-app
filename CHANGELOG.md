@@ -101,6 +101,14 @@ See `ai_rules.md` for how and when entries here should be added.
 
 ### Fixed
 
+- A `SMB_SYNC_PATH` (or any `browseDirectory` prefix) with a leading slash, e.g. `/Music`, built
+  storage keys that also kept the leading slash (`/Music/track.mp3`), while the "Link from SMB
+  share" browser's keys never have one (it always starts from the root). The same file linked
+  both ways would get two different keys and show up as a duplicate track, and the "already
+  linked" dedup check in the sync route would miss the match. `browseDirectory` now strips a
+  leading slash before building keys, so `music`, `/music`, and `/music/` all resolve to the
+  identical `music/` — found while answering a question about `SMB_SYNC_PATH` formatting, before
+  it caused a real duplicate for anyone.
 - A failed SMB download (e.g. file removed from the share mid-fetch, connection drop) left a
   stale 0-byte `.downloading-*` temp file behind in `server/smb-cache/` forever. Now cleaned up
   on error.

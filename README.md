@@ -125,6 +125,9 @@ share; set `SMB_SYNC_PATH` to scope it to a subfolder:
 SMB_SYNC_PATH=Music/Library   # optional, default is the whole share
 ```
 
+Leading/trailing slashes don't matter — `Music/Library`, `/Music/Library`, and `/Music/Library/`
+all resolve to the same folder.
+
 For hands-off syncing instead of clicking the button, set `SMB_SYNC_INTERVAL_MINUTES` to run the
 same scan automatically on a timer, for every existing account (sync is per-user, same as manual
 linking — each account gets its own copy of newly-found tracks in its own library):

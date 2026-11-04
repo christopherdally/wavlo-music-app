@@ -108,6 +108,12 @@ const AUDIO_EXT_RE = /\.(mp3|flac|wav|ogg|m4a|aac|opus)$/i;
 
 async function browseDirectory(prefix = '') {
   if (!smbEnabled) throw new Error('SMB is not configured');
+  // Normalize away a leading slash so "music" and "/music" (e.g. from
+  // SMB_SYNC_PATH) produce identical keys to what the "Link from SMB share"
+  // browser builds (which never has one, since it always starts from the
+  // root with prefix=''). Without this, the same file linked both ways would
+  // get two different storage keys and show up as a duplicate track.
+  prefix = prefix.replace(/^\/+/, '');
   const normalizedPrefix = prefix && !prefix.endsWith('/') ? `${prefix}/` : prefix;
   const smbDir = toSmbPath(normalizedPrefix);
   const command = smbDir ? `ls "${smbDir}\\*"` : 'ls "\\*"';
