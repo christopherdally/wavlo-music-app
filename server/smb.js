@@ -35,14 +35,17 @@ function status() {
   return { smbConfigured: smbEnabled, host: smbEnabled ? HOST : null, share: smbEnabled ? SHARE : null };
 }
 
-// Paths come from authenticated app users (who pick what to browse/link), not
-// the public internet, but they're still interpolated into smbclient's own
-// mini command language via `-c`. Reject anything outside a safe character
-// set so a crafted path can't inject extra smbclient commands or escape the
-// current directory.
-const SAFE_PATH_RE = /^[\w .()\-\/]*$/;
+// Paths come from authenticated app users (who pick what to browse/link) and,
+// for the recursive folder sync, from real filenames on the share — which
+// are full of ordinary punctuation ("Simon & Garfunkel", "Don't Stop",
+// "Album (Deluxe) [2020]"). They're interpolated into smbclient's own mini
+// command language via `-c`, inside a double-quoted argument, so only block
+// what could actually break out of that: a literal double quote (would end
+// the quoted argument early), a semicolon (smbclient's command separator),
+// a backslash (ambiguous with our own path-separator conversion), and ".."
+// (path traversal). Everything else is a normal filename character.
 function assertSafePath(p) {
-  if (p.includes('..') || !SAFE_PATH_RE.test(p)) {
+  if (p.includes('..') || /["\\;]/.test(p)) {
     throw new Error('Invalid path');
   }
 }
@@ -135,9 +138,20 @@ async function browseDirectory(prefix = '') {
 
 const MAX_RECURSE_DEPTH = 20; // guard against a pathological/circular share layout
 
+// Recursively lists every audio file under prefix. A single inaccessible or
+// oddly-named subfolder shouldn't abort the whole scan, so each folder's
+// listing failure is caught and skipped (logged) rather than propagated —
+// the rest of the tree still gets scanned.
 async function listAllAudioFiles(prefix = '', depth = 0) {
   if (depth > MAX_RECURSE_DEPTH) return [];
-  const { folders, files } = await browseDirectory(prefix);
+  let folders;
+  let files;
+  try {
+    ({ folders, files } = await browseDirectory(prefix));
+  } catch (err) {
+    console.error(`SMB sync: skipping "${prefix}" — ${err.message}`);
+    return [];
+  }
   let keys = files.map((f) => f.key);
   for (const folder of folders) {
     keys = keys.concat(await listAllAudioFiles(folder, depth + 1));

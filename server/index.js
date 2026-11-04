@@ -322,7 +322,8 @@ async function syncSmbFolderForUser(userId) {
     try {
       await linkTrackForUser(userId, 'smb', key);
       linked++;
-    } catch {
+    } catch (err) {
+      console.error(`SMB sync: failed to link "${key}" — ${err.message}`);
       failed++;
     }
   }
@@ -335,6 +336,7 @@ app.post('/api/storage/smb/sync', requireAuth, async (req, res) => {
   try {
     res.json(await syncSmbFolderForUser(req.user.id));
   } catch (err) {
+    console.error('SMB sync failed:', err.message);
     res.status(500).json({ error: err.message || 'Sync failed' });
   }
 });

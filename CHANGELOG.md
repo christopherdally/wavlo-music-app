@@ -113,6 +113,21 @@ See `ai_rules.md` for how and when entries here should be added.
 
 ### Fixed
 
+- "Sync SMB folder" failed with a 500 for real music libraries: the recursive scan touches every
+  file/folder in the tree (not just ones a user explicitly picks), and the path-safety filter was
+  stricter than it needed to be — rejecting any name with an `&`, `'`, `,`, `[`/`]`, `#`, etc.
+  (e.g. "Simon & Garfunkel", "Don't Stop"), which real filenames are full of. A single such name
+  anywhere in the tree aborted the *entire* sync with no partial results. Now: (1) the filter only
+  blocks what could actually break smbclient's command parsing or escape the share — a literal
+  `"`, `;`, `\`, or `..` — not ordinary punctuation; (2) a folder that still fails to list for any
+  other reason (permissions, a transient error) is logged and skipped, and the scan continues
+  through the rest of the tree instead of aborting; (3) sync failures are now logged server-side
+  (`console.error`), not just returned in the HTTP response body, so they actually show up in
+  Dokploy's runtime logs. Verified the new filter against a battery of real-world filenames
+  (ampersands, apostrophes, commas, brackets, parens, accented characters) — all now pass — while
+  path traversal, quote/semicolon/backslash injection attempts are still correctly rejected; also
+  simulated a failing subfolder and confirmed the scan now returns the rest of the tree's results
+  instead of throwing.
 - A `SMB_SYNC_PATH` (or any `browseDirectory` prefix) with a leading slash, e.g. `/Music`, built
   storage keys that also kept the leading slash (`/Music/track.mp3`), while the "Link from SMB
   share" browser's keys never have one (it always starts from the root). The same file linked
