@@ -215,6 +215,12 @@ input {
   text-decoration: underline;
 }
 
+.app-version {
+  font-size: 11px;
+  color: #666;
+  margin-top: 4px;
+}
+
 .main-view {
   grid-row: 1 / 2;
   background: linear-gradient(180deg, #2a2a2a 0%, var(--bg) 300px);

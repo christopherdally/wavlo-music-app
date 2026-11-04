@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLibrary } from '../context/LibraryContext';
 import NowPlayingBar from './NowPlayingBar';
+import { version as appVersion } from '../../package.json';
 
 export default function Shell({ children }) {
   const { user, logout } = useAuth();
@@ -58,6 +59,7 @@ export default function Shell({ children }) {
           <button className="link-btn" onClick={logout}>
             Log out
           </button>
+          <div className="app-version">Wavlo v{appVersion}</div>
         </div>
       </aside>
       <main className="main-view">{children}</main>

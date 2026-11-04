@@ -59,8 +59,38 @@ STORAGE_DRIVER=s3
 If `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` are omitted, the AWS SDK falls back to its default
 credential chain (instance role, shared credentials file, etc.) — useful when running on EC2/ECS.
 
+## Deployment (Docker / Dokploy)
+
+The repo ships a `docker-compose.yml` that builds two services:
+
+- `server` — the Express API (built from `server/Dockerfile`), with the SQLite DB and local
+  uploads persisted in named volumes.
+- `client` — the React app built and served by nginx (`client/Dockerfile` +
+  `client/nginx.conf`), which also reverse-proxies `/api/*` to `server` so the browser only
+  ever talks to one origin.
+
+### Plain Docker Compose
+
+```bash
+cp .env.example .env   # fill in JWT_SECRET, and S3 vars if you want them
+docker compose up -d --build
+```
+
+The app is then available at `http://localhost:8080` (or whatever `HTTP_PORT` you set).
+
+### Dokploy
+
+1. Create a new **Compose** application in Dokploy and point it at this repo (it will pick up
+   `docker-compose.yml` automatically).
+2. In the application's **Environment** tab, set `JWT_SECRET` (required) and, if you want S3
+   support, the `AWS_*`/`STORAGE_DRIVER` vars from `.env.example`. `HTTP_PORT` isn't needed —
+   Dokploy assigns its own domain/port to the `client` service.
+3. Deploy. Dokploy builds both services from their Dockerfiles and keeps the `wavlo_db` /
+   `wavlo_uploads` volumes across redeploys, so your library and local uploads persist.
+
 ## Notes
 
 - No copyrighted content is bundled — this app only plays audio files you upload or link yourself.
 - Data lives in `server/db/app.db` (SQLite); audio is in `server/uploads/` and/or your S3 bucket.
-- Set `JWT_SECRET` in `server/.env` for production use.
+- Set `JWT_SECRET` in `server/.env` (or the Docker/Dokploy environment) for production use.
+- See `CHANGELOG.md` for release history and `ai_rules.md` for how changes here get versioned.

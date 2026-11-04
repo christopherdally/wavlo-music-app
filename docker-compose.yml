@@ -1,0 +1,29 @@
+services:
+  server:
+    build: ./server
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      # Optional S3 storage backend — leave unset to use local disk only.
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      AWS_REGION: ${AWS_REGION:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+    volumes:
+      - wavlo_db:/app/db
+      - wavlo_uploads:/app/uploads
+
+  client:
+    build: ./client
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - '${HTTP_PORT:-8080}:80'
+
+volumes:
+  wavlo_db:
+  wavlo_uploads:
