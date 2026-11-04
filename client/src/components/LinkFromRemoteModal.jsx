@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api';
 
 function formatSize(bytes) {
   if (!bytes) return '';
@@ -7,7 +6,10 @@ function formatSize(bytes) {
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
 }
 
-export default function LinkFromBucketModal({ bucket, onClose, onLinked }) {
+// Reusable "browse a remote source and link files as tracks" modal. Works for
+// any backend whose browse/link calls return the shared shape
+// { prefix, folders: ['a/b/'], files: [{ key, size, lastModified }] }.
+export default function LinkFromRemoteModal({ title, rootLabel, browse, link, onClose, onLinked }) {
   const [prefix, setPrefix] = useState('');
   const [data, setData] = useState({ folders: [], files: [] });
   const [loading, setLoading] = useState(true);
@@ -17,8 +19,7 @@ export default function LinkFromBucketModal({ bucket, onClose, onLinked }) {
   function load(p) {
     setLoading(true);
     setError('');
-    api
-      .browseStorage(p)
+    browse(p)
       .then(setData)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -32,7 +33,7 @@ export default function LinkFromBucketModal({ bucket, onClose, onLinked }) {
     setLinkingKey(key);
     setError('');
     try {
-      await api.linkTrack(key);
+      await link(key);
       onLinked && onLinked();
     } catch (err) {
       setError(err.message);
@@ -45,7 +46,7 @@ export default function LinkFromBucketModal({ bucket, onClose, onLinked }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Link from {bucket}</h2>
+          <h2>{title}</h2>
           <button className="icon-btn" onClick={onClose}>
             ✕
           </button>
@@ -53,7 +54,7 @@ export default function LinkFromBucketModal({ bucket, onClose, onLinked }) {
 
         <div className="breadcrumbs">
           <button className="crumb" onClick={() => setPrefix('')}>
-            bucket root
+            {rootLabel}
           </button>
           {crumbs.map((c, i) => (
             <span key={i}>

@@ -12,5 +12,8 @@ server/db/*.db-wal
 server/uploads/*
 !server/uploads/.gitkeep
 
+# Local cache of files streamed from an SMB share
+server/smb-cache/
+
 *.log
 .DS_Store

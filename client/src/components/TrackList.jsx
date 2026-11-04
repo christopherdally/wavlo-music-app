@@ -70,7 +70,9 @@ export default function TrackList({ tracks, onTrackDeleted, playlistId, onRemove
             <div className="track-meta" onClick={() => playTrack(track, tracks)}>
               <div className="track-title">
                 {track.title}
-                {track.source === 'linked' && <span className="track-source-badge">S3</span>}
+                {track.source === 'linked' && (
+                  <span className="track-source-badge">{track.storage?.toUpperCase()}</span>
+                )}
               </div>
               <div className="track-artist">
                 {track.artist}

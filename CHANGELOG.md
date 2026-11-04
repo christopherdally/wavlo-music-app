@@ -30,8 +30,22 @@ See `ai_rules.md` for how and when entries here should be added.
   or off. New **Downloads** page lists everything downloaded and works fully offline, since it
   reads from IndexedDB rather than the API.
 - Sidebar shows an "Offline" badge when the browser has no network connection.
+- SMB/network share support ("link existing content", same pattern as S3): browse a configured
+  NAS/Windows share (SMB2/SMB3) and link audio files as library tracks without copying them in.
+  Streams on demand via the standard `smbclient`/`smbget` tools (not a JS SMB library — see
+  Changed below), with a local on-first-play cache (`server/smb-cache/`) so range requests
+  (scrubbing) work after the initial download. Configure via `SMB_HOST`/`SMB_SHARE`/
+  `SMB_USERNAME`/`SMB_PASSWORD` (+ optional `SMB_DOMAIN`/`SMB_PORT`). The "Link from bucket"
+  modal was generalized into a reusable `LinkFromRemoteModal` shared by both S3 and SMB.
 
 ### Changed
+
+- Evaluated `@marsaud/smb2` for the SMB feature above and dropped it: it authenticates with
+  legacy NTLMv1/LM hashing, which needs OpenSSL's legacy provider to even run under modern
+  Node, and is flatly rejected by real NTLMv2-only NAS/Windows/Samba servers (confirmed against
+  a live Samba 4.19 test server). Implemented by shelling out to `smbclient`/`smbget` instead
+  (via `execFile`/`spawn` with argument arrays, not shell strings — no injection risk), which
+  handle modern SMB2/3 auth correctly out of the box.
 
 - A previously-logged-in session is no longer force-logged-out when `/api/me` fails due to a
   network error (vs. an actual 401/403) — the cached session is kept so the app still works

@@ -12,6 +12,13 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-}
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      # Optional SMB/network share — leave unset to disable.
+      SMB_HOST: ${SMB_HOST:-}
+      SMB_SHARE: ${SMB_SHARE:-}
+      SMB_USERNAME: ${SMB_USERNAME:-}
+      SMB_PASSWORD: ${SMB_PASSWORD:-}
+      SMB_DOMAIN: ${SMB_DOMAIN:-WORKGROUP}
+      SMB_PORT: ${SMB_PORT:-445}
     volumes:
       - wavlo_db:/app/db
       - wavlo_uploads:/app/uploads

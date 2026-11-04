@@ -96,10 +96,22 @@ export const api = {
       handle
     ),
 
+  browseSmb: (dirPath) =>
+    fetch(`${BASE}/storage/browse?source=smb&path=${encodeURIComponent(dirPath || '')}`, {
+      headers: authHeaders(),
+    }).then(handle),
+
   linkTrack: (key) =>
     fetch(`${BASE}/tracks/link`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ key }),
+      body: JSON.stringify({ source: 's3', key }),
+    }).then(handle),
+
+  linkSmbTrack: (key) =>
+    fetch(`${BASE}/tracks/link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ source: 'smb', key }),
     }).then(handle),
 };

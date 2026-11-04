@@ -64,6 +64,43 @@ STORAGE_DRIVER=s3
 If `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` are omitted, the AWS SDK falls back to its default
 credential chain (instance role, shared credentials file, etc.) — useful when running on EC2/ECS.
 
+## SMB / network share (optional)
+
+Like the S3 integration, this is "link existing content" only — tracks are streamed on demand
+straight from the share, never copied onto the server. Works with a modern NAS (Synology, QNAP,
+TrueNAS, etc.) or a Windows file share (SMB2/SMB3). Older SMB1-only devices aren't supported.
+
+Once configured, a "Link from SMB share" button appears in the library, letting you browse the
+share's folders and link audio files the same way as the S3 bucket browser.
+
+Under the hood this shells out to the standard `smbclient`/`smbget` tools (from Samba's client
+package), not a JS SMB library — those turned out to be unreliable against real NTLMv2-only
+servers in testing. The Dockerfiles already install this via `apk add samba-client`; for local
+(non-Docker) dev, install it yourself: `apt install smbclient` (Debian/Ubuntu),
+`brew install samba` (macOS), etc. The feature is simply unavailable (not a crash) if these
+binaries aren't found and `SMB_*` is unset.
+
+The first play of an SMB-linked track downloads the whole file once into a local cache
+(`server/smb-cache/`) — SMB doesn't support true partial-byte downloads the way HTTP does.
+Seeking/scrubbing works normally from then on, including on that same play, since playback reads
+from the cache.
+
+Configure via `server/.env`:
+
+```bash
+SMB_HOST=192.168.1.50          # NAS/share IP or hostname
+SMB_SHARE=Music                # the share name (not a sub-path within it)
+SMB_USERNAME=myuser
+SMB_PASSWORD=mypassword
+# Optional, default WORKGROUP — only needed for domain-joined Windows shares
+SMB_DOMAIN=WORKGROUP
+# Optional, default 445
+SMB_PORT=445
+```
+
+This is one shared connection configured server-side (same pattern as S3), not a per-user
+credential — everyone using this Wavlo instance browses/links from the same share.
+
 ## Deployment (Docker / Dokploy)
 
 Two deployment options ship in this repo — pick whichever fits.

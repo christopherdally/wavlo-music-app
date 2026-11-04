@@ -8,6 +8,7 @@ const {
   DeleteObjectCommand,
   ListObjectsV2Command,
 } = require('@aws-sdk/client-s3');
+const smb = require('./smb');
 
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -55,6 +56,7 @@ function status() {
     s3Configured: s3Enabled,
     bucket: s3Enabled ? BUCKET : null,
     uploadDriver: s3Enabled ? uploadDriver() : 'local',
+    ...smb.status(),
   };
 }
 
@@ -140,6 +142,7 @@ async function streamS3(key, range, res) {
 
 async function streamFile(storage, key, range, res) {
   if (storage === 's3') return streamS3(key, range, res);
+  if (storage === 'smb') return smb.streamFile(key, range, res);
   return streamLocal(key, range, res);
 }
 
@@ -158,6 +161,9 @@ async function fetchObjectBuffer(storage, key) {
     if (head.size > MAX_METADATA_FETCH_BYTES) return null;
     const result = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
     return streamToBuffer(result.Body);
+  }
+  if (storage === 'smb') {
+    return smb.fetchFileBuffer(key);
   }
   const filePath = path.join(UPLOAD_DIR, key);
   const stat = fs.statSync(filePath);
@@ -197,4 +203,6 @@ module.exports = {
   fetchObjectBuffer,
   headS3Object,
   browseBucket,
+  smbEnabled: smb.smbEnabled,
+  browseSmbDirectory: smb.browseDirectory,
 };

@@ -129,37 +129,52 @@ app.post('/api/tracks/upload', requireAuth, upload.single('file'), async (req, r
   }
 });
 
-// ---------- Storage (S3) ----------
+// ---------- Storage (S3 / SMB "link existing content") ----------
 
 app.get('/api/storage/status', requireAuth, (req, res) => {
   res.json(storage.status());
 });
 
 app.get('/api/storage/browse', requireAuth, async (req, res) => {
+  const source = req.query.source === 'smb' ? 'smb' : 's3';
+  if (source === 'smb') {
+    if (!storage.smbEnabled) return res.status(400).json({ error: 'SMB is not configured' });
+    try {
+      res.json(await storage.browseSmbDirectory(req.query.path || ''));
+    } catch (err) {
+      res.status(500).json({ error: err.message || 'Failed to browse SMB share' });
+    }
+    return;
+  }
+
   if (!storage.s3Enabled) return res.status(400).json({ error: 'S3 is not configured' });
   try {
-    const result = await storage.browseBucket(req.query.prefix || '');
-    res.json(result);
+    res.json(await storage.browseBucket(req.query.prefix || ''));
   } catch (err) {
     res.status(500).json({ error: err.message || 'Failed to browse bucket' });
   }
 });
 
 app.post('/api/tracks/link', requireAuth, async (req, res) => {
-  if (!storage.s3Enabled) return res.status(400).json({ error: 'S3 is not configured' });
-  const { key } = req.body || {};
+  const source = req.body?.source === 'smb' ? 'smb' : 's3';
+  const key = req.body?.key;
   if (!key) return res.status(400).json({ error: 'key is required' });
 
-  try {
-    await storage.headS3Object(key);
-  } catch {
-    return res.status(404).json({ error: 'Object not found in bucket' });
+  if (source === 'smb' && !storage.smbEnabled) return res.status(400).json({ error: 'SMB is not configured' });
+  if (source === 's3' && !storage.s3Enabled) return res.status(400).json({ error: 'S3 is not configured' });
+
+  if (source === 's3') {
+    try {
+      await storage.headS3Object(key);
+    } catch {
+      return res.status(404).json({ error: 'Object not found in bucket' });
+    }
   }
 
   const fallbackTitle = path.parse(key).name;
   let meta = { title: fallbackTitle, artist: 'Unknown Artist', album: null, duration: null, coverData: null };
   try {
-    const buffer = await storage.fetchObjectBuffer('s3', key);
+    const buffer = await storage.fetchObjectBuffer(source, key);
     if (buffer) {
       meta = await extractMetadataFromBuffer(buffer, undefined, fallbackTitle);
     }
@@ -170,8 +185,8 @@ app.post('/api/tracks/link', requireAuth, async (req, res) => {
   const id = uuid();
   db.prepare(
     `INSERT INTO tracks (id, user_id, title, artist, album, duration, filename, storage, source, cover_data)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 's3', 'linked', ?)`
-  ).run(id, req.user.id, meta.title, meta.artist, meta.album, meta.duration, key, meta.coverData);
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'linked', ?)`
+  ).run(id, req.user.id, meta.title, meta.artist, meta.album, meta.duration, key, source, meta.coverData);
 
   const track = db.prepare('SELECT * FROM tracks WHERE id = ?').get(id);
   res.json(trackToJson(track));

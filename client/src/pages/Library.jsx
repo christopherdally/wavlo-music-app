@@ -3,7 +3,7 @@ import { useLibrary } from '../context/LibraryContext';
 import { usePlayer } from '../context/PlayerContext';
 import { api } from '../api';
 import TrackList from '../components/TrackList';
-import LinkFromBucketModal from '../components/LinkFromBucketModal';
+import LinkFromRemoteModal from '../components/LinkFromRemoteModal';
 
 export default function Library() {
   const { tracks, refreshTracks } = useLibrary();
@@ -13,7 +13,7 @@ export default function Library() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
   const [storageStatus, setStorageStatus] = useState(null);
-  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [activeLinkModal, setActiveLinkModal] = useState(null); // 's3' | 'smb' | null
 
   useEffect(() => {
     api.getStorageStatus().then(setStorageStatus).catch(() => {});
@@ -43,8 +43,13 @@ export default function Library() {
         <h1>Your Library</h1>
         <div className="page-header-actions">
           {storageStatus?.s3Configured && (
-            <button className="btn-secondary" onClick={() => setShowLinkModal(true)}>
+            <button className="btn-secondary" onClick={() => setActiveLinkModal('s3')}>
               Link from bucket
+            </button>
+          )}
+          {storageStatus?.smbConfigured && (
+            <button className="btn-secondary" onClick={() => setActiveLinkModal('smb')}>
+              Link from SMB share
             </button>
           )}
           <button className="btn-primary" onClick={() => fileInput.current.click()} disabled={uploading}>
@@ -61,10 +66,23 @@ export default function Library() {
         </div>
       </div>
       {error && <div className="auth-error">{error}</div>}
-      {showLinkModal && (
-        <LinkFromBucketModal
-          bucket={storageStatus?.bucket}
-          onClose={() => setShowLinkModal(false)}
+      {activeLinkModal === 's3' && (
+        <LinkFromRemoteModal
+          title={`Link from ${storageStatus?.bucket}`}
+          rootLabel="bucket root"
+          browse={api.browseStorage}
+          link={api.linkTrack}
+          onClose={() => setActiveLinkModal(null)}
+          onLinked={refreshTracks}
+        />
+      )}
+      {activeLinkModal === 'smb' && (
+        <LinkFromRemoteModal
+          title={`Link from ${storageStatus?.share || 'SMB share'}`}
+          rootLabel="share root"
+          browse={api.browseSmb}
+          link={api.linkSmbTrack}
+          onClose={() => setActiveLinkModal(null)}
           onLinked={refreshTracks}
         />
       )}
