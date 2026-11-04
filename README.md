@@ -63,15 +63,37 @@ credential chain (instance role, shared credentials file, etc.) — useful when 
 
 ## Deployment (Docker / Dokploy)
 
-The repo ships a `docker-compose.yml` that builds two services:
+Two deployment options ship in this repo — pick whichever fits.
 
-- `server` — the Express API (built from `server/Dockerfile`), with the SQLite DB and local
-  uploads persisted in named volumes.
-- `client` — the React app built and served by nginx (`client/Dockerfile` +
-  `client/nginx.conf`), which also reverse-proxies `/api/*` to `server` so the browser only
-  ever talks to one origin.
+### Option A: single container (simplest)
 
-### Plain Docker Compose
+The root `Dockerfile` builds the React app and has the Express server serve it directly
+(static files + SPA routing) alongside the API, all from one process on one port. No compose
+file needed.
+
+```bash
+docker build -t wavlo .
+docker run -d -p 4000:4000 \
+  -e JWT_SECRET=change-me \
+  -v wavlo_db:/app/db -v wavlo_uploads:/app/uploads \
+  wavlo
+```
+
+The app is then available at `http://localhost:4000`.
+
+**On Dokploy:** create a new **Application** (Dockerfile type), point it at this repo — it
+picks up the root `Dockerfile` automatically. Set `JWT_SECRET` (required) and, if you want S3
+support, the `AWS_*`/`STORAGE_DRIVER` vars from `.env.example` under the app's **Environment**
+tab. Mount `/app/db` and `/app/uploads` as persistent volumes so your library survives
+redeploys.
+
+### Option B: two containers (nginx + Express)
+
+`docker-compose.yml` builds two services instead: `server` (the Express API, from
+`server/Dockerfile`) and `client` (the React app built and served by nginx, from
+`client/Dockerfile` + `client/nginx.conf`, which reverse-proxies `/api/*` to `server`). Useful
+if you want nginx fronting the static assets specifically, or want to scale/update the two
+independently.
 
 ```bash
 cp .env.example .env   # fill in JWT_SECRET, and S3 vars if you want them
@@ -80,15 +102,9 @@ docker compose up -d --build
 
 The app is then available at `http://localhost:8080` (or whatever `HTTP_PORT` you set).
 
-### Dokploy
-
-1. Create a new **Compose** application in Dokploy and point it at this repo (it will pick up
-   `docker-compose.yml` automatically).
-2. In the application's **Environment** tab, set `JWT_SECRET` (required) and, if you want S3
-   support, the `AWS_*`/`STORAGE_DRIVER` vars from `.env.example`. `HTTP_PORT` isn't needed —
-   Dokploy assigns its own domain/port to the `client` service.
-3. Deploy. Dokploy builds both services from their Dockerfiles and keeps the `wavlo_db` /
-   `wavlo_uploads` volumes across redeploys, so your library and local uploads persist.
+**On Dokploy:** create a new **Compose** application instead, point it at this repo (it picks
+up `docker-compose.yml` automatically), set the same env vars under **Environment**. Dokploy
+keeps the `wavlo_db` / `wavlo_uploads` volumes across redeploys either way.
 
 ## Notes
 

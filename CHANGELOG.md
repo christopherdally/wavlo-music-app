@@ -18,11 +18,17 @@ See `ai_rules.md` for how and when entries here should be added.
   `docker-compose.yml` for running the full stack (and for one-click deploys on Dokploy).
 - MIT `LICENSE`.
 - `ROADMAP.md` listing planned enhancements and known limitations.
+- Single-container deployment: root `Dockerfile` builds the React app and has the Express
+  server serve it directly (static files + SPA routing) alongside the API, so the whole app
+  runs from one process/port with no compose file needed. Documented as "Option A" in the
+  README, alongside the existing two-container `docker-compose.yml` setup ("Option B").
 
 ### Fixed
 
 - Server failed to start on a fresh clone because `server/db/` (gitignored, holds the SQLite
   file) didn't exist yet; `db.js` now creates it automatically, same as the uploads directory.
+- The SPA-fallback route for the single-container build used Express 5's now-removed bare `'*'`
+  wildcard syntax, which threw on startup; replaced with a plain catch-all middleware.
 
 ## [1.0.0] - 2026-11-03
 

@@ -293,5 +293,18 @@ app.delete('/api/playlists/:id/tracks/:trackId', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- Serve the built frontend (single-container deployments) ----------
+// In local dev the client runs on its own Vite dev server, so this directory
+// won't exist and these routes simply never match.
+const fs = require('fs');
+const CLIENT_DIST = path.join(__dirname, 'public');
+if (fs.existsSync(CLIENT_DIST)) {
+  app.use(express.static(CLIENT_DIST));
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api/')) return next();
+    res.sendFile(path.join(CLIENT_DIST, 'index.html'));
+  });
+}
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
