@@ -5,6 +5,8 @@ services:
     environment:
       PORT: 4000
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      # Set to "false" to disable new account sign-up (existing logins still work).
+      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
       # Optional S3 storage backend — leave unset to use local disk only.
       AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
       AWS_REGION: ${AWS_REGION:-}

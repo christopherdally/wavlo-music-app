@@ -16,6 +16,8 @@ async function handle(res) {
 }
 
 export const api = {
+  getAuthConfig: () => fetch(`${BASE}/auth/config`).then(handle),
+
   register: (email, password, displayName) =>
     fetch(`${BASE}/auth/register`, {
       method: 'POST',

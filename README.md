@@ -159,6 +159,10 @@ keeps the `wavlo_db` / `wavlo_uploads` volumes across redeploys either way.
 - No copyrighted content is bundled — this app only plays audio files you upload or link yourself.
 - Data lives in `server/db/app.db` (SQLite); audio is in `server/uploads/` and/or your S3 bucket.
 - Set `JWT_SECRET` in `server/.env` (or the Docker/Dokploy environment) for production use.
+- Sign-up is open by default. Set `ALLOW_SIGNUP=false` once you've created the account(s) you
+  need to make the instance invite-only — the register page and "Sign up" link disappear, and
+  `POST /api/auth/register` is rejected server-side too (not just hidden in the UI). Existing
+  accounts can still log in as normal.
 - See `CHANGELOG.md` for release history, `ROADMAP.md` for planned enhancements, and
   `ai_rules.md` for how changes here get versioned.
 

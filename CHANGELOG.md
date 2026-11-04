@@ -44,6 +44,11 @@ See `ai_rules.md` for how and when entries here should be added.
   Verified against a live Samba test server: cascading multi-file eviction and touch-on-read LRU
   refresh (a re-played older track survives eviction over a never-replayed newer one) both work
   as designed.
+- `ALLOW_SIGNUP` env var (default `true`) to disable new account creation, for making a
+  self-hosted instance invite-only once you've created the accounts you need. New
+  `GET /api/auth/config` (public, no auth) exposes this so the frontend can hide the "Sign up"
+  link/page accordingly; `POST /api/auth/register` is also rejected server-side when disabled
+  (not just hidden in the UI). Existing accounts can still log in as normal.
 
 ### Changed
 

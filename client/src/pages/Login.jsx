@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../api';
 
 export default function Login() {
   const { login, user } = useAuth();
@@ -8,6 +9,14 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [signupEnabled, setSignupEnabled] = useState(true);
+
+  useEffect(() => {
+    api
+      .getAuthConfig()
+      .then((config) => setSignupEnabled(config.signupEnabled))
+      .catch(() => {});
+  }, []);
 
   if (user) return <Navigate to="/" replace />;
 
@@ -37,9 +46,11 @@ export default function Login() {
         <button className="btn-primary" disabled={busy} type="submit">
           {busy ? 'Logging in…' : 'Log in'}
         </button>
-        <p className="auth-switch">
-          No account? <Link to="/register">Sign up</Link>
-        </p>
+        {signupEnabled && (
+          <p className="auth-switch">
+            No account? <Link to="/register">Sign up</Link>
+          </p>
+        )}
       </form>
     </div>
   );

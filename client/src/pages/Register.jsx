@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../api';
 
 export default function Register() {
   const { register, user } = useAuth();
@@ -9,6 +10,14 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [signupEnabled, setSignupEnabled] = useState(true);
+
+  useEffect(() => {
+    api
+      .getAuthConfig()
+      .then((config) => setSignupEnabled(config.signupEnabled))
+      .catch(() => {});
+  }, []);
 
   if (user) return <Navigate to="/" replace />;
 
@@ -23,6 +32,21 @@ export default function Register() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (!signupEnabled) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <h1 className="brand">Wavlo</h1>
+          <h2>Sign-up is disabled</h2>
+          <p className="auth-switch">
+            This instance isn't accepting new accounts right now. <Link to="/login">Log in</Link> if you already
+            have one.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

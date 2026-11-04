@@ -32,7 +32,18 @@ const upload = multer({
 
 // ---------- Auth ----------
 
+// Default true so a fresh install still lets its first user sign up without
+// extra config; set ALLOW_SIGNUP=false once you've created the account(s)
+// you need, to turn this self-hosted instance invite-only.
+const signupEnabled = (process.env.ALLOW_SIGNUP ?? 'true').toLowerCase() !== 'false';
+
+app.get('/api/auth/config', (req, res) => {
+  res.json({ signupEnabled });
+});
+
 app.post('/api/auth/register', async (req, res) => {
+  if (!signupEnabled) return res.status(403).json({ error: 'Sign-up is disabled on this instance' });
+
   const { email, password, displayName } = req.body || {};
   if (!email || !password || !displayName) {
     return res.status(400).json({ error: 'email, password, and displayName are required' });
