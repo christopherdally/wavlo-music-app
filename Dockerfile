@@ -13,7 +13,10 @@ COPY client/ .
 RUN npm run build
 
 # ---- Install server production dependencies ----
+# Needs a C/C++ toolchain to build better-sqlite3's native addon when no
+# prebuilt binary matches the build platform/arch.
 FROM node:20-alpine AS server-deps
+RUN apk add --no-cache python3 make g++
 WORKDIR /app/server
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --omit=dev

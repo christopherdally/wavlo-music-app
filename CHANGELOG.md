@@ -39,6 +39,12 @@ See `ai_rules.md` for how and when entries here should be added.
 
 ### Fixed
 
+- Docker builds (both `server/Dockerfile` and the root single-container `Dockerfile`) failed
+  on `npm ci` with a `node-gyp`/`better-sqlite3` compile error on platforms/architectures with
+  no matching prebuilt binary (seen on a Dokploy build). The `node:20-alpine` base image has no
+  C/C++ toolchain by default; both Dockerfiles now install `python3 make g++` in a dedicated
+  build stage before `npm ci`, and copy only the resulting `node_modules` into the final image
+  so the toolchain doesn't bloat the runtime image.
 - Server failed to start on a fresh clone because `server/db/` (gitignored, holds the SQLite
   file) didn't exist yet; `db.js` now creates it automatically, same as the uploads directory.
 - The SPA-fallback route for the single-container build used Express 5's now-removed bare `'*'`
