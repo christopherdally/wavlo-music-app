@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+.env.local
+
+# SQLite data
+server/db/*.db
+server/db/*.db-shm
+server/db/*.db-wal
+
+# Uploaded audio (local-storage driver)
+server/uploads/*
+!server/uploads/.gitkeep
+
+*.log
+.DS_Store
