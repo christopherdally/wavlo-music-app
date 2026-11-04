@@ -19,8 +19,12 @@ export default function PlaylistPage() {
   useEffect(load, [id]);
 
   async function handleRemove(trackId) {
-    await api.removeTrackFromPlaylist(id, trackId);
-    load();
+    try {
+      await api.removeTrackFromPlaylist(id, trackId);
+      load();
+    } catch (err) {
+      alert(err.message || 'Failed to update playlist.');
+    }
   }
 
   async function handleDeletePlaylist() {

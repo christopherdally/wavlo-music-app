@@ -100,6 +100,23 @@ input {
   margin: 0 0 4px;
 }
 
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.offline-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #fbbf24;
+  border: 1px solid #fbbf24;
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
 /* ---------- Shell layout ---------- */
 
 .shell {
@@ -245,6 +262,12 @@ input {
   gap: 10px;
 }
 
+.page-subtitle {
+  color: var(--text-subdued);
+  font-size: 13px;
+  margin: -8px 0 16px;
+}
+
 .play-all-btn {
   margin-bottom: 16px;
 }
@@ -324,7 +347,7 @@ input {
 
 .track-row {
   display: grid;
-  grid-template-columns: 32px 44px 1fr 60px 40px;
+  grid-template-columns: 32px 44px 1fr 60px 32px 40px;
   align-items: center;
   gap: 12px;
   padding: 6px 8px;
@@ -387,6 +410,26 @@ input {
   color: var(--text-subdued);
   font-size: 13px;
   text-align: right;
+}
+
+.download-btn {
+  font-size: 13px;
+  text-align: center;
+  opacity: 0.6;
+}
+
+.track-row:hover .download-btn {
+  opacity: 1;
+}
+
+.download-btn.downloaded {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.download-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .track-actions {

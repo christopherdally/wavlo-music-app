@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePlayer } from '../context/PlayerContext';
 import { useLibrary } from '../context/LibraryContext';
+import { useOffline } from '../context/OfflineContext';
 import { api } from '../api';
 
 function formatDuration(sec) {
@@ -15,16 +16,37 @@ function formatDuration(sec) {
 export default function TrackList({ tracks, onTrackDeleted, playlistId, onRemoveFromPlaylist }) {
   const { playTrack, current, isPlaying } = usePlayer();
   const { playlists, deleteTrack } = useLibrary();
+  const { downloadedIds, pendingIds, downloadTrack, removeDownload } = useOffline();
   const [menuTrackId, setMenuTrackId] = useState(null);
 
   async function handleAddToPlaylist(playlistId, trackId) {
-    await api.addTrackToPlaylist(playlistId, trackId);
+    try {
+      await api.addTrackToPlaylist(playlistId, trackId);
+    } catch (err) {
+      alert(err.message || 'Failed to add to playlist.');
+    }
     setMenuTrackId(null);
   }
 
   async function handleDelete(trackId) {
-    await deleteTrack(trackId);
-    onTrackDeleted && onTrackDeleted(trackId);
+    try {
+      await deleteTrack(trackId);
+      onTrackDeleted && onTrackDeleted(trackId);
+    } catch (err) {
+      alert(err.message || 'Failed to delete track.');
+    }
+  }
+
+  async function handleToggleDownload(track) {
+    if (downloadedIds.has(track.id)) {
+      await removeDownload(track.id);
+      return;
+    }
+    try {
+      await downloadTrack(track);
+    } catch (err) {
+      alert(`Couldn't download "${track.title}" for offline use: ${err.message}`);
+    }
   }
 
   if (tracks.length === 0) {
@@ -35,6 +57,8 @@ export default function TrackList({ tracks, onTrackDeleted, playlistId, onRemove
     <div className="track-list">
       {tracks.map((track, i) => {
         const isCurrent = current?.id === track.id;
+        const isDownloaded = downloadedIds.has(track.id);
+        const isPending = pendingIds.has(track.id);
         return (
           <div key={track.id} className={`track-row ${isCurrent ? 'active' : ''}`}>
             <div className="track-index" onClick={() => playTrack(track, tracks)}>
@@ -54,6 +78,14 @@ export default function TrackList({ tracks, onTrackDeleted, playlistId, onRemove
               </div>
             </div>
             <div className="track-duration">{formatDuration(track.duration)}</div>
+            <button
+              className={`icon-btn download-btn ${isDownloaded ? 'downloaded' : ''}`}
+              title={isDownloaded ? 'Downloaded — click to remove' : 'Download for offline playback'}
+              disabled={isPending}
+              onClick={() => handleToggleDownload(track)}
+            >
+              {isPending ? '…' : isDownloaded ? '✓' : '⬇'}
+            </button>
             <div className="track-actions">
               <button className="icon-btn" onClick={() => setMenuTrackId(menuTrackId === track.id ? null : track.id)}>
                 ⋯

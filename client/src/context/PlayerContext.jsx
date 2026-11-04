@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { getDownload } from '../offline';
 
 const PlayerContext = createContext(null);
 
@@ -36,8 +37,31 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     if (!current) return;
     const audio = audioRef.current;
-    audio.src = current.streamUrl;
-    audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    let cancelled = false;
+    let objectUrl = null;
+
+    (async () => {
+      // Play from the locally-downloaded copy when we have one — works
+      // offline, and skips re-streaming a track we already have.
+      let src = current.streamUrl;
+      try {
+        const offlineTrack = await getDownload(current.id);
+        if (offlineTrack?.audioBlob) {
+          objectUrl = URL.createObjectURL(offlineTrack.audioBlob);
+          src = objectUrl;
+        }
+      } catch {
+        // IndexedDB unavailable or lookup failed — fall back to streaming.
+      }
+      if (cancelled) return;
+      audio.src = src;
+      audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    })();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id]);
 

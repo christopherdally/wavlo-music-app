@@ -2,12 +2,14 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PlayerProvider } from './context/PlayerContext';
 import { LibraryProvider } from './context/LibraryContext';
+import { OfflineProvider } from './context/OfflineContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Shell from './components/Shell';
 import Library from './pages/Library';
 import SearchPage from './pages/SearchPage';
 import PlaylistPage from './pages/PlaylistPage';
+import DownloadsPage from './pages/DownloadsPage';
 
 function PrivateArea() {
   const { user, loading } = useAuth();
@@ -15,18 +17,21 @@ function PrivateArea() {
   if (!user) return <Navigate to="/login" replace />;
 
   return (
-    <LibraryProvider>
-      <PlayerProvider>
-        <Shell>
-          <Routes>
-            <Route path="/" element={<Library />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/playlist/:id" element={<PlaylistPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Shell>
-      </PlayerProvider>
-    </LibraryProvider>
+    <OfflineProvider>
+      <LibraryProvider>
+        <PlayerProvider>
+          <Shell>
+            <Routes>
+              <Route path="/" element={<Library />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/downloads" element={<DownloadsPage />} />
+              <Route path="/playlist/:id" element={<PlaylistPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Shell>
+        </PlayerProvider>
+      </LibraryProvider>
+    </OfflineProvider>
   );
 }
 

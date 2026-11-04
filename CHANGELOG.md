@@ -22,6 +22,20 @@ See `ai_rules.md` for how and when entries here should be added.
   server serve it directly (static files + SPA routing) alongside the API, so the whole app
   runs from one process/port with no compose file needed. Documented as "Option A" in the
   README, alongside the existing two-container `docker-compose.yml` setup ("Option B").
+- Installable PWA: web app manifest + service worker (via `vite-plugin-pwa`) precache the app
+  shell, so Wavlo can be installed to the home screen/desktop and the UI itself loads even
+  with no network connection.
+- Offline track downloads: a per-track "download for offline" button stores the audio (and
+  cover art) in IndexedDB; playback automatically uses the local copy when available, online
+  or off. New **Downloads** page lists everything downloaded and works fully offline, since it
+  reads from IndexedDB rather than the API.
+- Sidebar shows an "Offline" badge when the browser has no network connection.
+
+### Changed
+
+- A previously-logged-in session is no longer force-logged-out when `/api/me` fails due to a
+  network error (vs. an actual 401/403) — the cached session is kept so the app still works
+  offline. User info is now cached in `localStorage` for this optimistic-offline render.
 
 ### Fixed
 

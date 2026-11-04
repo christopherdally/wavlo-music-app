@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLibrary } from '../context/LibraryContext';
+import { useOffline } from '../context/OfflineContext';
 import NowPlayingBar from './NowPlayingBar';
 import { version as appVersion } from '../../package.json';
 
 export default function Shell({ children }) {
   const { user, logout } = useAuth();
   const { playlists, createPlaylist } = useLibrary();
+  const { isOnline } = useOffline();
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -24,12 +26,16 @@ export default function Shell({ children }) {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand">Wavlo</div>
+        <div className="brand-row">
+          <div className="brand">Wavlo</div>
+          {!isOnline && <span className="offline-badge">Offline</span>}
+        </div>
         <nav className="nav-links">
           <NavLink to="/" end>
             Home
           </NavLink>
           <NavLink to="/search">Search</NavLink>
+          <NavLink to="/downloads">Downloads</NavLink>
         </nav>
         <div className="sidebar-playlists-header">
           <span>Playlists</span>

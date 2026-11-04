@@ -27,8 +27,15 @@ See `CHANGELOG.md` for what's already shipped and `ai_rules.md` for how changes 
       the app.
 - [ ] **Multi-user libraries/households** — optional shared library a group of accounts can all
       see and stream from, alongside each user's private uploads.
-- [ ] **PWA support** — installable, works offline for already-loaded tracks, add-to-home-screen.
 - [ ] **Light theme** — the UI is dark-only today; add a toggle.
+- [ ] **Download whole playlists/albums at once** — a single action to queue up every track in
+      a playlist for offline download, instead of one at a time. Builds on the per-track
+      downloads shipped in 1.1.0.
+- [ ] **Offline storage usage indicator** — show how much space downloaded tracks are using
+      (IndexedDB) and let users clear them, individually or all at once.
+- [ ] **Background sync for downloads** — use the Background Sync API so a download started
+      with a flaky connection finishes automatically once connectivity returns, instead of
+      failing outright.
 - [ ] **S3 migration tool** — move existing local-disk tracks to S3 (or back) from the UI instead
       of only choosing a backend at upload time.
 - [ ] **Automated tests + CI** — unit tests for the API, a basic e2e smoke test, and a GitHub
@@ -45,6 +52,8 @@ See `CHANGELOG.md` for what's already shipped and `ai_rules.md` for how changes 
 - [ ] **OAuth login** — sign in with Google/GitHub in addition to email/password.
 - [ ] **Audio visualizer** on the now-playing bar.
 - [ ] **Admin/usage dashboard** — storage used (local vs. S3), per-user library size.
+- [ ] **Native desktop app (Electron)** — a separate packaged .exe/.dmg/.AppImage build, for
+      users who want a dedicated app over the installable PWA shipped in 1.1.0.
 
 ## Known limitations (not yet roadmapped)
 
