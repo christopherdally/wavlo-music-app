@@ -14,6 +14,7 @@ export default function Library() {
   const [error, setError] = useState('');
   const [storageStatus, setStorageStatus] = useState(null);
   const [activeLinkModal, setActiveLinkModal] = useState(null); // 's3' | 'smb' | null
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     api.getStorageStatus().then(setStorageStatus).catch(() => {});
@@ -37,6 +38,25 @@ export default function Library() {
     refreshTracks();
   }
 
+  async function handleSyncSmb() {
+    setSyncing(true);
+    setError('');
+    try {
+      const result = await api.syncSmb();
+      refreshTracks();
+      alert(
+        `SMB sync complete: ${result.linked} new track${result.linked === 1 ? '' : 's'} linked` +
+          (result.alreadyLinked ? `, ${result.alreadyLinked} already in your library` : '') +
+          (result.failed ? `, ${result.failed} failed` : '') +
+          ` (${result.scanned} file${result.scanned === 1 ? '' : 's'} found total).`
+      );
+    } catch (err) {
+      setError(err.message || 'SMB sync failed.');
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   return (
     <div className="page">
       <div className="page-header">
@@ -48,9 +68,14 @@ export default function Library() {
             </button>
           )}
           {storageStatus?.smbConfigured && (
-            <button className="btn-secondary" onClick={() => setActiveLinkModal('smb')}>
-              Link from SMB share
-            </button>
+            <>
+              <button className="btn-secondary" onClick={() => setActiveLinkModal('smb')}>
+                Link from SMB share
+              </button>
+              <button className="btn-secondary" onClick={handleSyncSmb} disabled={syncing}>
+                {syncing ? 'Syncing…' : 'Sync SMB folder'}
+              </button>
+            </>
           )}
           <button className="btn-primary" onClick={() => fileInput.current.click()} disabled={uploading}>
             {uploading ? `Uploading… ${Math.round(progress * 100)}%` : 'Upload tracks'}

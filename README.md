@@ -114,6 +114,25 @@ SMB_PORT=445
 This is one shared connection configured server-side (same pattern as S3), not a per-user
 credential — everyone using this Wavlo instance browses/links from the same share.
 
+### Auto-linking a whole folder
+
+Instead of linking files one at a time (or in a manually-selected batch), "Sync SMB folder" in
+the library scans a folder recursively and links every audio file in it you don't already have —
+safe to click repeatedly, since already-linked files are skipped. By default it scans the whole
+share; set `SMB_SYNC_PATH` to scope it to a subfolder:
+
+```bash
+SMB_SYNC_PATH=Music/Library   # optional, default is the whole share
+```
+
+For hands-off syncing instead of clicking the button, set `SMB_SYNC_INTERVAL_MINUTES` to run the
+same scan automatically on a timer, for every existing account (sync is per-user, same as manual
+linking — each account gets its own copy of newly-found tracks in its own library):
+
+```bash
+SMB_SYNC_INTERVAL_MINUTES=60   # optional, default 0 = disabled (manual button only)
+```
+
 ## Deployment (Docker / Dokploy)
 
 Two deployment options ship in this repo — pick whichever fits.

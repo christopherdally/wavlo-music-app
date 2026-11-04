@@ -71,6 +71,20 @@ See `ai_rules.md` for how and when entries here should be added.
   (lossless) files — bitrate, sample rate, channels, and the lossless/lossy distinction all read
   back exactly as encoded — and confirmed the migration preserves existing tracks untouched when
   applied to a pre-this-feature database.
+- Auto-linking a whole SMB folder: a "Sync SMB folder" button (next to "Link from SMB share")
+  recursively scans a folder and links every audio file not already in your library — safe to
+  click repeatedly, since already-linked files are skipped (`POST /api/storage/smb/sync`).
+  Scope it with `SMB_SYNC_PATH` (default: whole share). Optional
+  `SMB_SYNC_INTERVAL_MINUTES` runs the same scan automatically on a timer for every existing
+  account, for hands-off syncing instead of clicking the button (sync stays per-user, same as
+  manual linking — no cross-account sharing). `server/index.js` gained a shared
+  `linkTrackForUser` helper (factored out of the single-track link route) so both the manual
+  link and the bulk sync use identical linking logic; `smb.js` gained `listAllAudioFiles`, a
+  depth-guarded recursive directory walk. Reuses already-verified functions throughout
+  (`browseDirectory`, `headObject`, `fetchObjectBuffer`); the "SMB not configured" rejection was
+  verified live, but a full recursive-sync-against-a-real-share run wasn't (Docker Hub rate-
+  limited test-container pulls in the dev sandbox) — worth a real-world smoke test after
+  deploying.
 
 ### Changed
 

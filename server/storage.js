@@ -216,4 +216,5 @@ module.exports = {
   browseBucket,
   smbEnabled: smb.smbEnabled,
   browseSmbDirectory: smb.browseDirectory,
+  listAllSmbAudioFiles: smb.listAllAudioFiles,
 };

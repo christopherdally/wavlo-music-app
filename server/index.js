@@ -223,20 +223,12 @@ app.get('/api/storage/browse', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/api/tracks/link', requireAuth, async (req, res) => {
-  const source = req.body?.source === 'smb' ? 'smb' : 's3';
-  const key = req.body?.key;
-  if (!key) return res.status(400).json({ error: 'key is required' });
-
-  if (source === 'smb' && !storage.smbEnabled) return res.status(400).json({ error: 'SMB is not configured' });
-  if (source === 's3' && !storage.s3Enabled) return res.status(400).json({ error: 'S3 is not configured' });
-
-  let fileSize = null;
-  try {
-    fileSize = (await storage.headObject(source, key)).size;
-  } catch {
-    return res.status(404).json({ error: 'Object not found' });
-  }
+// Links one remote file (S3 or SMB) as a track for the given user. Shared by
+// the single-track /api/tracks/link route and the bulk SMB folder sync below.
+// Throws on failure (caller decides how to translate that — an HTTP error for
+// a single link, or a per-file "failed" tally for a sync pass).
+async function linkTrackForUser(userId, source, key) {
+  const fileSize = (await storage.headObject(source, key)).size;
 
   const fallbackTitle = path.parse(key).name;
   let meta = {
@@ -271,7 +263,7 @@ app.post('/api/tracks/link', requireAuth, async (req, res) => {
      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'linked', ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
-    req.user.id,
+    userId,
     meta.title,
     meta.artist,
     meta.album,
@@ -288,8 +280,61 @@ app.post('/api/tracks/link', requireAuth, async (req, res) => {
     meta.lossless == null ? null : meta.lossless ? 1 : 0
   );
 
-  const track = db.prepare('SELECT * FROM tracks WHERE id = ?').get(id);
+  return db.prepare('SELECT * FROM tracks WHERE id = ?').get(id);
+}
+
+app.post('/api/tracks/link', requireAuth, async (req, res) => {
+  const source = req.body?.source === 'smb' ? 'smb' : 's3';
+  const key = req.body?.key;
+  if (!key) return res.status(400).json({ error: 'key is required' });
+
+  if (source === 'smb' && !storage.smbEnabled) return res.status(400).json({ error: 'SMB is not configured' });
+  if (source === 's3' && !storage.s3Enabled) return res.status(400).json({ error: 'S3 is not configured' });
+
+  let track;
+  try {
+    track = await linkTrackForUser(req.user.id, source, key);
+  } catch {
+    return res.status(404).json({ error: 'Object not found' });
+  }
   res.json(trackToJson(track));
+});
+
+// Scans an SMB folder (recursively) and links every audio file not already
+// in the given user's library. Used by both the manual "Sync now" button and
+// the optional scheduled background sync.
+async function syncSmbFolderForUser(userId) {
+  const syncPath = process.env.SMB_SYNC_PATH || '';
+  const allKeys = await storage.listAllSmbAudioFiles(syncPath);
+  const alreadyLinked = new Set(
+    db
+      .prepare("SELECT filename FROM tracks WHERE user_id = ? AND storage = 'smb'")
+      .all(userId)
+      .map((r) => r.filename)
+  );
+
+  let linked = 0;
+  let failed = 0;
+  for (const key of allKeys) {
+    if (alreadyLinked.has(key)) continue;
+    try {
+      await linkTrackForUser(userId, 'smb', key);
+      linked++;
+    } catch {
+      failed++;
+    }
+  }
+
+  return { scanned: allKeys.length, linked, failed, alreadyLinked: allKeys.length - linked - failed };
+}
+
+app.post('/api/storage/smb/sync', requireAuth, async (req, res) => {
+  if (!storage.smbEnabled) return res.status(400).json({ error: 'SMB is not configured' });
+  try {
+    res.json(await syncSmbFolderForUser(req.user.id));
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Sync failed' });
+  }
 });
 
 app.get('/api/tracks', requireAuth, (req, res) => {
@@ -419,6 +464,25 @@ if (fs.existsSync(CLIENT_DIST)) {
     if (req.method !== 'GET' || req.path.startsWith('/api/')) return next();
     res.sendFile(path.join(CLIENT_DIST, 'index.html'));
   });
+}
+
+// ---------- Scheduled SMB folder sync (optional) ----------
+// Runs the same sync as the manual "Sync now" button, on a timer, for every
+// existing account — consistent with linking already being per-user/private
+// rather than shared across accounts.
+const smbSyncIntervalMinutes = Number(process.env.SMB_SYNC_INTERVAL_MINUTES || 0);
+if (storage.smbEnabled && smbSyncIntervalMinutes > 0) {
+  setInterval(async () => {
+    const users = db.prepare('SELECT id FROM users').all();
+    for (const user of users) {
+      try {
+        await syncSmbFolderForUser(user.id);
+      } catch (err) {
+        console.error(`Scheduled SMB sync failed for user ${user.id}:`, err.message);
+      }
+    }
+  }, smbSyncIntervalMinutes * 60 * 1000);
+  console.log(`Scheduled SMB sync enabled: every ${smbSyncIntervalMinutes} minute(s)`);
 }
 
 const PORT = process.env.PORT || 4000;

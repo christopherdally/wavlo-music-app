@@ -127,6 +127,18 @@ async function browseDirectory(prefix = '') {
   return { prefix: normalizedPrefix, folders, files };
 }
 
+const MAX_RECURSE_DEPTH = 20; // guard against a pathological/circular share layout
+
+async function listAllAudioFiles(prefix = '', depth = 0) {
+  if (depth > MAX_RECURSE_DEPTH) return [];
+  const { folders, files } = await browseDirectory(prefix);
+  let keys = files.map((f) => f.key);
+  for (const folder of folders) {
+    keys = keys.concat(await listAllAudioFiles(folder, depth + 1));
+  }
+  return keys;
+}
+
 async function statFile(filePath) {
   if (!smbEnabled) throw new Error('SMB is not configured');
   const smbPath = toSmbPath(filePath);
@@ -270,6 +282,7 @@ module.exports = {
   smbEnabled,
   status,
   browseDirectory,
+  listAllAudioFiles,
   statFile,
   fetchFileBuffer,
   streamFile,

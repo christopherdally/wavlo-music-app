@@ -22,6 +22,8 @@ services:
       SMB_DOMAIN: ${SMB_DOMAIN:-WORKGROUP}
       SMB_PORT: ${SMB_PORT:-445}
       SMB_CACHE_MAX_MB: ${SMB_CACHE_MAX_MB:-10240}
+      SMB_SYNC_PATH: ${SMB_SYNC_PATH:-}
+      SMB_SYNC_INTERVAL_MINUTES: ${SMB_SYNC_INTERVAL_MINUTES:-0}
     volumes:
       - wavlo_db:/app/db
       - wavlo_uploads:/app/uploads

@@ -116,4 +116,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ source: 'smb', key }),
     }).then(handle),
+
+  syncSmb: () =>
+    fetch(`${BASE}/storage/smb/sync`, { method: 'POST', headers: authHeaders() }).then(handle),
 };
