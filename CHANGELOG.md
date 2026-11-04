@@ -85,6 +85,18 @@ See `ai_rules.md` for how and when entries here should be added.
   verified live, but a full recursive-sync-against-a-real-share run wasn't (Docker Hub rate-
   limited test-container pulls in the dev sandbox) — worth a real-world smoke test after
   deploying.
+- New **Artists** page: groups tracks by artist (every track always has one, unlike album, so
+  no fallback/catch-all needed), same card-grid/detail-view pattern as Albums.
+- New **Discover** page with four shelves built entirely from your own library (no external
+  catalog or other-users' data involved, since this is a personal library, not a streaming
+  service): Recently added, Random picks (re-shuffleable), Most played, and Haven't heard in a
+  while. The latter two required adding play tracking that didn't exist before: `play_count` and
+  `last_played_at` columns (DB migration), incremented via a new `POST /api/tracks/:id/play`
+  fired by `PlayerContext` whenever a track becomes the one playing. Verified end-to-end
+  (uploaded tracks across 3 artists, played some multiple times, confirmed exact play counts via
+  the API and correct ordering in all four shelves) — and caught a real bug doing it: the
+  client's cached track list wasn't refreshed after a play, so "Most played" stayed empty until
+  `PlayerContext` was wired to call the existing `refreshTracks()` after each recorded play.
 
 ### Changed
 

@@ -107,6 +107,8 @@ function trackToJson(t) {
     // tracks it's exactly the path the user picked while browsing to link it.
     location: t.filename,
     createdAt: t.created_at,
+    playCount: t.play_count,
+    lastPlayedAt: t.last_played_at,
     fileInfo: {
       fileSize: t.file_size,
       bitrate: t.bitrate,
@@ -342,6 +344,19 @@ app.get('/api/tracks', requireAuth, (req, res) => {
     .prepare('SELECT * FROM tracks WHERE user_id = ? ORDER BY created_at DESC')
     .all(req.user.id);
   res.json(tracks.map(trackToJson));
+});
+
+// Fire-and-forget from the player whenever a track becomes the one playing —
+// powers the Discover page's "Most played" / "Not played in a while" shelves.
+app.post('/api/tracks/:id/play', requireAuth, (req, res) => {
+  const result = db
+    .prepare(
+      `UPDATE tracks SET play_count = play_count + 1, last_played_at = datetime('now')
+       WHERE id = ? AND user_id = ?`
+    )
+    .run(req.params.id, req.user.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Track not found' });
+  res.json({ ok: true });
 });
 
 app.get('/api/tracks/search', requireAuth, (req, res) => {

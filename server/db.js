@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS tracks (
   codec TEXT,
   container TEXT,
   lossless INTEGER,
+  play_count INTEGER NOT NULL DEFAULT 0,
+  last_played_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -70,6 +72,12 @@ for (const column of ['codec', 'container']) {
   if (!existingColumns.includes(column)) {
     db.exec(`ALTER TABLE tracks ADD COLUMN ${column} TEXT`);
   }
+}
+if (!existingColumns.includes('play_count')) {
+  db.exec('ALTER TABLE tracks ADD COLUMN play_count INTEGER NOT NULL DEFAULT 0');
+}
+if (!existingColumns.includes('last_played_at')) {
+  db.exec('ALTER TABLE tracks ADD COLUMN last_played_at TEXT');
 }
 
 module.exports = db;

@@ -6,8 +6,12 @@ A self-hosted Spotify-style music player. Upload your own audio files, organize 
 playlists, search your library, and stream with a Spotify-inspired dark UI (sidebar, library
 grid, scrubbing now-playing bar). An **Albums** page automatically groups tracks that share an
 album tag — or, for tracks linked in from S3/SMB, that came from the same source folder — without
-any manual organizing. Each track's "File info" (from its `⋯` menu) shows real format details —
-codec, bitrate, sample rate, channels, lossless/lossy, file size — not just title/artist/album.
+any manual organizing, plus an **Artists** page grouping the same way by artist. Each track's
+"File info" (from its `⋯` menu) shows real format details — codec, bitrate, sample rate,
+channels, lossless/lossy, file size — not just title/artist/album. A **Discover** page surfaces
+different slices of your own library — recently added, random picks, most played, and tracks you
+haven't heard in a while — no external catalog involved, since this is a personal library, not a
+streaming service.
 
 ## Stack
 

@@ -11,6 +11,8 @@ import SearchPage from './pages/SearchPage';
 import PlaylistPage from './pages/PlaylistPage';
 import DownloadsPage from './pages/DownloadsPage';
 import AlbumsPage from './pages/AlbumsPage';
+import ArtistsPage from './pages/ArtistsPage';
+import DiscoverPage from './pages/DiscoverPage';
 
 function PrivateArea() {
   const { user, loading } = useAuth();
@@ -24,7 +26,9 @@ function PrivateArea() {
           <Shell>
             <Routes>
               <Route path="/" element={<Library />} />
+              <Route path="/discover" element={<DiscoverPage />} />
               <Route path="/albums" element={<AlbumsPage />} />
+              <Route path="/artists" element={<ArtistsPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/downloads" element={<DownloadsPage />} />
               <Route path="/playlist/:id" element={<PlaylistPage />} />

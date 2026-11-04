@@ -337,6 +337,28 @@ input {
   margin: 0;
 }
 
+/* ---------- Discover page ---------- */
+
+.discover-shelf {
+  margin-bottom: 36px;
+}
+
+.discover-shelf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.discover-shelf-title {
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+
+.discover-shelf-header .discover-shelf-title {
+  margin-bottom: 0;
+}
+
 /* ---------- Buttons ---------- */
 
 .btn-primary {

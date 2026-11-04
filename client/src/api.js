@@ -39,6 +39,9 @@ export const api = {
   searchTracks: (q) =>
     fetch(`${BASE}/tracks/search?q=${encodeURIComponent(q)}`, { headers: authHeaders() }).then(handle),
 
+  recordPlay: (trackId) =>
+    fetch(`${BASE}/tracks/${trackId}/play`, { method: 'POST', headers: authHeaders() }).then(handle),
+
   uploadTrack: (file, onProgress) =>
     new Promise((resolve, reject) => {
       const form = new FormData();

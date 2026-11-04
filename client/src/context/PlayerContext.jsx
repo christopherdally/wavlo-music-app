@@ -1,9 +1,12 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { getDownload } from '../offline';
+import { api } from '../api';
+import { useLibrary } from './LibraryContext';
 
 const PlayerContext = createContext(null);
 
 export function PlayerProvider({ children }) {
+  const { refreshTracks } = useLibrary();
   const audioRef = useRef(new Audio());
   const [queue, setQueue] = useState([]);
   const [index, setIndex] = useState(-1);
@@ -56,6 +59,12 @@ export function PlayerProvider({ children }) {
       if (cancelled) return;
       audio.src = src;
       audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      // Fire-and-forget: powers the Discover page's play-count/recency
+      // shelves. Refresh the shared track list afterward so the updated
+      // playCount/lastPlayedAt are visible without a page reload. Fine if
+      // this fails (offline, etc.) — just means this particular play isn't
+      // counted.
+      api.recordPlay(current.id).then(refreshTracks).catch(() => {});
     })();
 
     return () => {
