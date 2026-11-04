@@ -45,6 +45,14 @@ See `ai_rules.md` for how and when entries here should be added.
   C/C++ toolchain by default; both Dockerfiles now install `python3 make g++` in a dedicated
   build stage before `npm ci`, and copy only the resulting `node_modules` into the final image
   so the toolchain doesn't bloat the runtime image.
+- Container crashed on startup with no error output (exit 139 / SIGSEGV) after the `python3
+  make g++` fix above got the build itself passing (seen on a live Dokploy deploy). Root cause:
+  `better-sqlite3@13.0.3` (and a few of its transitive deps) require Node.js **22+**; the
+  Dockerfiles were still on `node:20-alpine`, so the native addon loaded under an incompatible
+  Node ABI and segfaulted instead of failing with a catchable error. All three Dockerfiles
+  (`server/Dockerfile`, root `Dockerfile`, `client/Dockerfile`) now use `node:22-alpine`, and
+  `server/package.json` declares `"engines": { "node": ">=22" }` so this surfaces loudly in
+  local dev too, not just in production.
 - Server failed to start on a fresh clone because `server/db/` (gitignored, holds the SQLite
   file) didn't exist yet; `db.js` now creates it automatically, same as the uploads directory.
 - The SPA-fallback route for the single-container build used Express 5's now-removed bare `'*'`

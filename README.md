@@ -15,6 +15,9 @@ grid, scrubbing now-playing bar).
 
 ## Running locally
 
+Requires **Node.js 22+** (the backend's dependencies, including `better-sqlite3`'s native
+addon, require it — running on Node 20 or older will fail at runtime, not just with a warning).
+
 ```bash
 # Terminal 1 — backend (port 4000)
 cd server
