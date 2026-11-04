@@ -37,7 +37,7 @@ See `ai_rules.md` for how and when entries here should be added.
   (scrubbing) work after the initial download. Configure via `SMB_HOST`/`SMB_SHARE`/
   `SMB_USERNAME`/`SMB_PASSWORD` (+ optional `SMB_DOMAIN`/`SMB_PORT`). The "Link from bucket"
   modal was generalized into a reusable `LinkFromRemoteModal` shared by both S3 and SMB.
-- SMB cache eviction: `server/smb-cache/` is now capped (`SMB_CACHE_MAX_MB`, default 2048) with
+- SMB cache eviction: `server/smb-cache/` is now capped (`SMB_CACHE_MAX_MB`, default 10240) with
   LRU eviction — every read touches the file's access time, and whenever a new download pushes
   the cache over the cap, the least-recently-played files are deleted (possibly several at once)
   until it's back under. Runs in the background after each download, never on the read path.

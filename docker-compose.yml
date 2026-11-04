@@ -19,7 +19,7 @@ services:
       SMB_PASSWORD: ${SMB_PASSWORD:-}
       SMB_DOMAIN: ${SMB_DOMAIN:-WORKGROUP}
       SMB_PORT: ${SMB_PORT:-445}
-      SMB_CACHE_MAX_MB: ${SMB_CACHE_MAX_MB:-2048}
+      SMB_CACHE_MAX_MB: ${SMB_CACHE_MAX_MB:-10240}
     volumes:
       - wavlo_db:/app/db
       - wavlo_uploads:/app/uploads

@@ -28,7 +28,7 @@ if (smbEnabled) fs.mkdirSync(CACHE_DIR, { recursive: true });
 // that cache would grow forever, so it's capped with simple LRU eviction:
 // every cache hit/miss touches the file's mtime, and whenever a new file is
 // downloaded we prune the least-recently-used files until back under the cap.
-const CACHE_MAX_BYTES = (process.env.SMB_CACHE_MAX_MB ? Number(process.env.SMB_CACHE_MAX_MB) : 2048) * 1024 * 1024;
+const CACHE_MAX_BYTES = (process.env.SMB_CACHE_MAX_MB ? Number(process.env.SMB_CACHE_MAX_MB) : 10240) * 1024 * 1024;
 const DOWNLOADING_SUFFIX_RE = /\.downloading-\d+-[0-9a-f]+$/;
 
 function status() {

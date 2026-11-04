@@ -83,9 +83,12 @@ binaries aren't found and `SMB_*` is unset.
 The first play of an SMB-linked track downloads the whole file once into a local cache
 (`server/smb-cache/`) — SMB doesn't support true partial-byte downloads the way HTTP does.
 Seeking/scrubbing works normally from then on, including on that same play, since playback reads
-from the cache. The cache is capped (`SMB_CACHE_MAX_MB`, default 2048 = 2 GB) with LRU eviction —
-every play refreshes that file's position in the queue, and whenever a new download pushes the
-cache over the cap, the least-recently-played files are deleted first until it's back under.
+from the cache. The cache is capped (`SMB_CACHE_MAX_MB`, default 10240 = 10 GB) with LRU
+eviction — every play refreshes that file's position in the queue, and whenever a new download
+pushes the cache over the cap, the least-recently-played files are deleted first until it's back
+under. Raise this if the server and your NAS are on the same local network (SMB reads are fast
+and free there — the default assumes that); keep it low if SMB traffic has to cross the internet
+to reach the share, where repeated re-downloads are more costly.
 It's disposable — losing it just means the next play of that track re-downloads it, no data
 loss — `docker-compose.yml` persists it in a volume anyway purely so a redeploy doesn't cold-start
 every track again, but you can safely wipe `server/smb-cache/` any time.
