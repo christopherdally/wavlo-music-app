@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS tracks (
   lossless INTEGER,
   play_count INTEGER NOT NULL DEFAULT 0,
   last_played_at TEXT,
+  content_hash TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -78,6 +79,9 @@ if (!existingColumns.includes('play_count')) {
 }
 if (!existingColumns.includes('last_played_at')) {
   db.exec('ALTER TABLE tracks ADD COLUMN last_played_at TEXT');
+}
+if (!existingColumns.includes('content_hash')) {
+  db.exec('ALTER TABLE tracks ADD COLUMN content_hash TEXT');
 }
 
 module.exports = db;

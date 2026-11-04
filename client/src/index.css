@@ -359,6 +359,58 @@ input {
   margin-bottom: 0;
 }
 
+/* ---------- SMB sync progress ---------- */
+
+.sync-progress {
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+}
+
+.sync-progress-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--text-subdued);
+  margin-bottom: 8px;
+}
+
+.progress-bar-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progress-bar-fill.indeterminate {
+  width: 40%;
+  animation: progress-indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+/* ---------- Duplicates page ---------- */
+
+.duplicate-group {
+  margin-bottom: 32px;
+}
+
 /* ---------- Buttons ---------- */
 
 .btn-primary {

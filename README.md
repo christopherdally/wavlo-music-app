@@ -11,7 +11,9 @@ any manual organizing, plus an **Artists** page grouping the same way by artist.
 channels, lossless/lossy, file size — not just title/artist/album. A **Discover** page surfaces
 different slices of your own library — recently added, random picks, most played, and tracks you
 haven't heard in a while — no external catalog involved, since this is a personal library, not a
-streaming service.
+streaming service. Duplicate tracks are hard-blocked at upload/link time (same file linked twice,
+same content re-uploaded, or same title+artist re-added under a different file), and a
+**Duplicates** page can scan your existing library for ones that slipped in before.
 
 ## Stack
 

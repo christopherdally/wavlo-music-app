@@ -6,6 +6,7 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { v4: uuid } = require('uuid');
 const mm = require('music-metadata');
@@ -139,6 +140,7 @@ function extractMetadataFromBuffer(buffer, mimetype, fallbackTitle) {
         codec: meta.format.codec || null,
         container: meta.format.container || null,
         lossless: meta.format.lossless == null ? null : meta.format.lossless,
+        contentHash: crypto.createHash('sha256').update(buffer).digest('hex'),
       };
     })
     .catch(() => ({
@@ -154,7 +156,61 @@ function extractMetadataFromBuffer(buffer, mimetype, fallbackTitle) {
       codec: null,
       container: null,
       lossless: null,
+      contentHash: crypto.createHash('sha256').update(buffer).digest('hex'),
     }));
+}
+
+// Checks whether this user already has a track that's "the same file" by one
+// of three signals, in order of certainty:
+//   1. Same storage key/path (e.g. the exact same S3/SMB file linked twice).
+//   2. Same content hash (byte-identical file, even under a different name).
+//   3. Same title + artist (case/whitespace-insensitive) + duration within
+//      2 seconds — catches "uploaded the same song twice from a different
+//      source/encode" without being thrown off by trivial re-encodes.
+// Returns the conflicting track row, or null.
+function normalizeForDupeCheck(s) {
+  return (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function findDuplicateTrack(userId, { storage: storageType, filename, contentHash, title, artist, duration }) {
+  if (storageType && filename) {
+    const byKey = db
+      .prepare('SELECT * FROM tracks WHERE user_id = ? AND storage = ? AND filename = ?')
+      .get(userId, storageType, filename);
+    if (byKey) return byKey;
+  }
+
+  if (contentHash) {
+    const byHash = db
+      .prepare('SELECT * FROM tracks WHERE user_id = ? AND content_hash = ?')
+      .get(userId, contentHash);
+    if (byHash) return byHash;
+  }
+
+  if (title && artist) {
+    const normTitle = normalizeForDupeCheck(title);
+    const normArtist = normalizeForDupeCheck(artist);
+    const candidates = db
+      .prepare('SELECT * FROM tracks WHERE user_id = ? AND lower(title) = ? AND lower(artist) = ?')
+      .all(userId, normTitle, normArtist);
+    for (const candidate of candidates) {
+      if (
+        normalizeForDupeCheck(candidate.title) === normTitle &&
+        normalizeForDupeCheck(candidate.artist) === normArtist &&
+        (duration == null || candidate.duration == null || Math.abs(candidate.duration - duration) <= 2)
+      ) {
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
+function describeDuplicate(track) {
+  const err = new Error(`"${track.title}" by ${track.artist} is already in your library`);
+  err.isDuplicate = true;
+  return err;
 }
 
 app.post('/api/tracks/upload', requireAuth, upload.single('file'), async (req, res) => {
@@ -162,6 +218,18 @@ app.post('/api/tracks/upload', requireAuth, upload.single('file'), async (req, r
   try {
     const fallbackTitle = path.parse(req.file.originalname).name;
     const meta = await extractMetadataFromBuffer(req.file.buffer, req.file.mimetype, fallbackTitle);
+
+    const duplicate = findDuplicateTrack(req.user.id, {
+      contentHash: meta.contentHash,
+      title: meta.title,
+      artist: meta.artist,
+      duration: meta.duration,
+    });
+    if (duplicate) {
+      const err = describeDuplicate(duplicate);
+      err.status = 409;
+      throw err;
+    }
 
     const ext = path.extname(req.file.originalname) || '.mp3';
     const key = `uploads/${uuid()}${ext}`;
@@ -171,8 +239,8 @@ app.post('/api/tracks/upload', requireAuth, upload.single('file'), async (req, r
     db.prepare(
       `INSERT INTO tracks (
          id, user_id, title, artist, album, duration, filename, storage, source, cover_data,
-         file_size, bitrate, sample_rate, channels, codec, container, lossless
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'uploaded', ?, ?, ?, ?, ?, ?, ?, ?)`
+         file_size, bitrate, sample_rate, channels, codec, container, lossless, content_hash
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'uploaded', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
       req.user.id,
@@ -189,13 +257,14 @@ app.post('/api/tracks/upload', requireAuth, upload.single('file'), async (req, r
       meta.channels,
       meta.codec,
       meta.container,
-      meta.lossless == null ? null : meta.lossless ? 1 : 0
+      meta.lossless == null ? null : meta.lossless ? 1 : 0,
+      meta.contentHash
     );
 
     const track = db.prepare('SELECT * FROM tracks WHERE id = ?').get(id);
     res.json(trackToJson(track));
   } catch (err) {
-    res.status(500).json({ error: err.message || 'Upload failed' });
+    res.status(err.status || 500).json({ error: err.message || 'Upload failed' });
   }
 });
 
@@ -246,6 +315,7 @@ async function linkTrackForUser(userId, source, key) {
     codec: null,
     container: null,
     lossless: null,
+    contentHash: null,
   };
   try {
     const buffer = await storage.fetchObjectBuffer(source, key);
@@ -257,12 +327,22 @@ async function linkTrackForUser(userId, source, key) {
     // size we already have from the head/stat check above.
   }
 
+  const duplicate = findDuplicateTrack(userId, {
+    storage: source,
+    filename: key,
+    contentHash: meta.contentHash,
+    title: meta.title,
+    artist: meta.artist,
+    duration: meta.duration,
+  });
+  if (duplicate) throw describeDuplicate(duplicate);
+
   const id = uuid();
   db.prepare(
     `INSERT INTO tracks (
        id, user_id, title, artist, album, duration, filename, storage, source, cover_data,
-       file_size, bitrate, sample_rate, channels, codec, container, lossless
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'linked', ?, ?, ?, ?, ?, ?, ?, ?)`
+       file_size, bitrate, sample_rate, channels, codec, container, lossless, content_hash
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'linked', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     userId,
@@ -279,7 +359,8 @@ async function linkTrackForUser(userId, source, key) {
     meta.channels,
     meta.codec,
     meta.container,
-    meta.lossless == null ? null : meta.lossless ? 1 : 0
+    meta.lossless == null ? null : meta.lossless ? 1 : 0,
+    meta.contentHash
   );
 
   return db.prepare('SELECT * FROM tracks WHERE id = ?').get(id);
@@ -296,49 +377,144 @@ app.post('/api/tracks/link', requireAuth, async (req, res) => {
   let track;
   try {
     track = await linkTrackForUser(req.user.id, source, key);
-  } catch {
-    return res.status(404).json({ error: 'Object not found' });
+  } catch (err) {
+    return res.status(err.isDuplicate ? 409 : 404).json({ error: err.isDuplicate ? err.message : 'Object not found' });
   }
   res.json(trackToJson(track));
 });
 
+// ---------- SMB folder sync (runs as a background job, polled for progress) ----------
+
+// One job per user, in-memory — fine for a single-process server, and a
+// user only ever has one meaningful sync in flight at a time anyway.
+const smbSyncJobs = new Map();
+
+function newSyncJob() {
+  return {
+    status: 'scanning', // 'scanning' | 'linking' | 'done' | 'error'
+    scanned: 0, // total audio files found on the share (incl. already-linked)
+    total: null, // new (not-yet-linked) files to process, known once scanning finishes
+    processed: 0,
+    linked: 0,
+    duplicates: 0,
+    failed: 0,
+    error: null,
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+  };
+}
+
 // Scans an SMB folder (recursively) and links every audio file not already
-// in the given user's library. Used by both the manual "Sync now" button and
-// the optional scheduled background sync.
-async function syncSmbFolderForUser(userId) {
+// in the given user's library, updating `job` in place as it goes so
+// GET /api/storage/smb/sync/status can report live progress. Used by both
+// the manual "Sync now" button and the optional scheduled background sync.
+async function syncSmbFolderForUser(userId, job) {
   const syncPath = process.env.SMB_SYNC_PATH || '';
   const allKeys = await storage.listAllSmbAudioFiles(syncPath);
+  job.scanned = allKeys.length;
+
   const alreadyLinked = new Set(
     db
       .prepare("SELECT filename FROM tracks WHERE user_id = ? AND storage = 'smb'")
       .all(userId)
       .map((r) => r.filename)
   );
+  const toProcess = allKeys.filter((key) => !alreadyLinked.has(key));
 
-  let linked = 0;
-  let failed = 0;
-  for (const key of allKeys) {
-    if (alreadyLinked.has(key)) continue;
+  job.status = 'linking';
+  job.total = toProcess.length;
+
+  for (const key of toProcess) {
     try {
       await linkTrackForUser(userId, 'smb', key);
-      linked++;
+      job.linked++;
     } catch (err) {
-      console.error(`SMB sync: failed to link "${key}" — ${err.message}`);
-      failed++;
+      if (err.isDuplicate) {
+        job.duplicates++;
+      } else {
+        console.error(`SMB sync: failed to link "${key}" — ${err.message}`);
+        job.failed++;
+      }
+    }
+    job.processed++;
+  }
+
+  job.status = 'done';
+  job.finishedAt = new Date().toISOString();
+}
+
+app.post('/api/storage/smb/sync', requireAuth, (req, res) => {
+  if (!storage.smbEnabled) return res.status(400).json({ error: 'SMB is not configured' });
+
+  const existing = smbSyncJobs.get(req.user.id);
+  if (existing && (existing.status === 'scanning' || existing.status === 'linking')) {
+    return res.json(existing); // already running — hand back its current state
+  }
+
+  const job = newSyncJob();
+  smbSyncJobs.set(req.user.id, job);
+  // Not awaited: the HTTP response returns immediately, and the client polls
+  // GET /api/storage/smb/sync/status for progress — a full recursive scan of
+  // a large share can take well past any reasonable request timeout.
+  syncSmbFolderForUser(req.user.id, job).catch((err) => {
+    console.error('SMB sync failed:', err.message);
+    job.status = 'error';
+    job.error = err.message;
+    job.finishedAt = new Date().toISOString();
+  });
+
+  res.json(job);
+});
+
+app.get('/api/storage/smb/sync/status', requireAuth, (req, res) => {
+  res.json(smbSyncJobs.get(req.user.id) || { status: 'idle' });
+});
+
+// Scans the user's existing library for likely duplicates — a cleanup tool
+// for tracks added before duplicate detection existed (or ones that slipped
+// past it some other way). Groups by the same two signals used at
+// upload/link time: exact content hash, then same title+artist+duration.
+app.get('/api/tracks/duplicates', requireAuth, (req, res) => {
+  const tracks = db.prepare('SELECT * FROM tracks WHERE user_id = ? ORDER BY created_at ASC').all(req.user.id);
+  const assigned = new Set();
+  const groups = [];
+
+  const byHash = new Map();
+  for (const t of tracks) {
+    if (!t.content_hash) continue;
+    if (!byHash.has(t.content_hash)) byHash.set(t.content_hash, []);
+    byHash.get(t.content_hash).push(t);
+  }
+  for (const group of byHash.values()) {
+    if (group.length < 2) continue;
+    groups.push({ reason: 'Identical file', tracks: group.map(trackToJson) });
+    group.forEach((t) => assigned.add(t.id));
+  }
+
+  const remaining = tracks.filter((t) => !assigned.has(t.id));
+  const used = new Set();
+  for (let i = 0; i < remaining.length; i++) {
+    const a = remaining[i];
+    if (used.has(a.id)) continue;
+    const cluster = [a];
+    for (let j = i + 1; j < remaining.length; j++) {
+      const b = remaining[j];
+      if (used.has(b.id)) continue;
+      if (
+        normalizeForDupeCheck(a.title) === normalizeForDupeCheck(b.title) &&
+        normalizeForDupeCheck(a.artist) === normalizeForDupeCheck(b.artist) &&
+        (a.duration == null || b.duration == null || Math.abs(a.duration - b.duration) <= 2)
+      ) {
+        cluster.push(b);
+      }
+    }
+    if (cluster.length > 1) {
+      cluster.forEach((t) => used.add(t.id));
+      groups.push({ reason: 'Same title & artist', tracks: cluster.map(trackToJson) });
     }
   }
 
-  return { scanned: allKeys.length, linked, failed, alreadyLinked: allKeys.length - linked - failed };
-}
-
-app.post('/api/storage/smb/sync', requireAuth, async (req, res) => {
-  if (!storage.smbEnabled) return res.status(400).json({ error: 'SMB is not configured' });
-  try {
-    res.json(await syncSmbFolderForUser(req.user.id));
-  } catch (err) {
-    console.error('SMB sync failed:', err.message);
-    res.status(500).json({ error: err.message || 'Sync failed' });
-  }
+  res.json({ groups });
 });
 
 app.get('/api/tracks', requireAuth, (req, res) => {
@@ -492,10 +668,15 @@ if (storage.smbEnabled && smbSyncIntervalMinutes > 0) {
   setInterval(async () => {
     const users = db.prepare('SELECT id FROM users').all();
     for (const user of users) {
+      const job = newSyncJob();
+      smbSyncJobs.set(user.id, job);
       try {
-        await syncSmbFolderForUser(user.id);
+        await syncSmbFolderForUser(user.id, job);
       } catch (err) {
         console.error(`Scheduled SMB sync failed for user ${user.id}:`, err.message);
+        job.status = 'error';
+        job.error = err.message;
+        job.finishedAt = new Date().toISOString();
       }
     }
   }, smbSyncIntervalMinutes * 60 * 1000);

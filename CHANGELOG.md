@@ -97,6 +97,22 @@ See `ai_rules.md` for how and when entries here should be added.
   the API and correct ordering in all four shelves) — and caught a real bug doing it: the
   client's cached track list wasn't refreshed after a play, so "Most played" stayed empty until
   `PlayerContext` was wired to call the existing `refreshTracks()` after each recorded play.
+- Duplicate prevention: uploading or linking a track that's already in your library is now
+  hard-blocked (409), checked three ways — the same S3/SMB file linked twice, the exact same
+  audio content uploaded twice (SHA256 content hash, new `content_hash` column), or the same
+  title+artist already present under a different file (duration-tolerant match, ±2s, to avoid
+  false positives from re-tagged/re-encoded copies). New **Duplicates** page
+  (`GET /api/tracks/duplicates`) scans the existing library for the same two signals and groups
+  conflicts so tracks added before this existed (or that slipped past it) can be reviewed and
+  cleaned up, reusing the existing per-track delete action.
+- "Sync SMB folder" now runs as a background job instead of blocking the request for the whole
+  scan+link duration (which could exceed typical HTTP/proxy timeouts for large libraries):
+  `POST /api/storage/smb/sync` starts the job and returns immediately, `GET
+  /api/storage/smb/sync/status` reports its progress (`scanning` → `linking` with
+  processed/total counts → `done`/`error`). The library page polls this and shows a progress
+  bar — indeterminate while scanning, determinate while linking — and picks up polling for a
+  sync already in progress on page load (started from another tab, or by the server's own
+  `SMB_SYNC_INTERVAL_MINUTES` timer), instead of only ones it starts itself.
 
 ### Changed
 

@@ -13,6 +13,7 @@ import DownloadsPage from './pages/DownloadsPage';
 import AlbumsPage from './pages/AlbumsPage';
 import ArtistsPage from './pages/ArtistsPage';
 import DiscoverPage from './pages/DiscoverPage';
+import DuplicatesPage from './pages/DuplicatesPage';
 
 function PrivateArea() {
   const { user, loading } = useAuth();
@@ -29,6 +30,7 @@ function PrivateArea() {
               <Route path="/discover" element={<DiscoverPage />} />
               <Route path="/albums" element={<AlbumsPage />} />
               <Route path="/artists" element={<ArtistsPage />} />
+              <Route path="/duplicates" element={<DuplicatesPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/downloads" element={<DownloadsPage />} />
               <Route path="/playlist/:id" element={<PlaylistPage />} />

@@ -5,6 +5,8 @@ import { api } from '../api';
 import TrackList from '../components/TrackList';
 import LinkFromRemoteModal from '../components/LinkFromRemoteModal';
 
+const SHELF_SIZE = 10;
+
 export default function Library() {
   const { tracks, refreshTracks } = useLibrary();
   const { playTrack } = usePlayer();
@@ -14,11 +16,45 @@ export default function Library() {
   const [error, setError] = useState('');
   const [storageStatus, setStorageStatus] = useState(null);
   const [activeLinkModal, setActiveLinkModal] = useState(null); // 's3' | 'smb' | null
-  const [syncing, setSyncing] = useState(false);
+  const [syncJob, setSyncJob] = useState(null);
+  const syncPollRef = useRef(null);
 
   useEffect(() => {
     api.getStorageStatus().then(setStorageStatus).catch(() => {});
   }, []);
+
+  // A sync may already be running — kicked off by another tab, or by the
+  // server's own scheduled SMB_SYNC_INTERVAL_MINUTES timer — so pick up
+  // polling for it on mount instead of only when this page starts one.
+  useEffect(() => {
+    api
+      .getSmbSyncStatus()
+      .then((job) => {
+        if (job.status === 'scanning' || job.status === 'linking') {
+          setSyncJob(job);
+          pollSyncStatus();
+        }
+      })
+      .catch(() => {});
+    return () => clearTimeout(syncPollRef.current);
+  }, []);
+
+  function pollSyncStatus() {
+    syncPollRef.current = setTimeout(async () => {
+      let job;
+      try {
+        job = await api.getSmbSyncStatus();
+      } catch {
+        return;
+      }
+      setSyncJob(job);
+      if (job.status === 'scanning' || job.status === 'linking') {
+        pollSyncStatus();
+      } else if (job.status === 'done') {
+        refreshTracks();
+      }
+    }, 1000);
+  }
 
   async function onFilesChosen(e) {
     const files = Array.from(e.target.files || []);
@@ -39,23 +75,27 @@ export default function Library() {
   }
 
   async function handleSyncSmb() {
-    setSyncing(true);
     setError('');
     try {
-      const result = await api.syncSmb();
-      refreshTracks();
-      alert(
-        `SMB sync complete: ${result.linked} new track${result.linked === 1 ? '' : 's'} linked` +
-          (result.alreadyLinked ? `, ${result.alreadyLinked} already in your library` : '') +
-          (result.failed ? `, ${result.failed} failed` : '') +
-          ` (${result.scanned} file${result.scanned === 1 ? '' : 's'} found total).`
-      );
+      const job = await api.syncSmb();
+      setSyncJob(job);
+      pollSyncStatus();
     } catch (err) {
       setError(err.message || 'SMB sync failed.');
-    } finally {
-      setSyncing(false);
     }
   }
+
+  const syncing = syncJob && (syncJob.status === 'scanning' || syncJob.status === 'linking');
+  const syncProgressPct =
+    syncJob && syncJob.status === 'linking' && syncJob.total
+      ? Math.round((syncJob.processed / syncJob.total) * 100)
+      : null;
+
+  const recentlyAdded = [...tracks].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, SHELF_SIZE);
+  const recentlyPlayed = [...tracks]
+    .filter((t) => t.lastPlayedAt)
+    .sort((a, b) => new Date(b.lastPlayedAt) - new Date(a.lastPlayedAt))
+    .slice(0, SHELF_SIZE);
 
   return (
     <div className="page">
@@ -91,6 +131,41 @@ export default function Library() {
         </div>
       </div>
       {error && <div className="auth-error">{error}</div>}
+      {syncJob && syncJob.status !== 'idle' && (
+        <div className="sync-progress">
+          {syncing ? (
+            <>
+              <div className="sync-progress-label">
+                {syncJob.status === 'scanning'
+                  ? 'Scanning SMB share…'
+                  : `Linking tracks… ${syncJob.processed}/${syncJob.total}`}
+              </div>
+              <div className="progress-bar-track">
+                <div
+                  className={`progress-bar-fill ${syncProgressPct == null ? 'indeterminate' : ''}`}
+                  style={syncProgressPct != null ? { width: `${syncProgressPct}%` } : undefined}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="sync-progress-label">
+              {syncJob.status === 'error' ? (
+                <>SMB sync failed: {syncJob.error}</>
+              ) : (
+                <>
+                  SMB sync complete: {syncJob.linked} new track{syncJob.linked === 1 ? '' : 's'} linked
+                  {syncJob.duplicates ? `, ${syncJob.duplicates} duplicate${syncJob.duplicates === 1 ? '' : 's'} skipped` : ''}
+                  {syncJob.failed ? `, ${syncJob.failed} failed` : ''} ({syncJob.scanned} file
+                  {syncJob.scanned === 1 ? '' : 's'} found total).
+                </>
+              )}
+              <button className="link-btn" onClick={() => setSyncJob(null)}>
+                Dismiss
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       {activeLinkModal === 's3' && (
         <LinkFromRemoteModal
           title={`Link from ${storageStatus?.bucket}`}
@@ -111,12 +186,30 @@ export default function Library() {
           onLinked={refreshTracks}
         />
       )}
-      {tracks.length > 0 && (
-        <button className="btn-secondary play-all-btn" onClick={() => playTrack(tracks[0], tracks)}>
-          ▶ Play all
-        </button>
+      {recentlyAdded.length > 0 && (
+        <section className="discover-shelf">
+          <h2 className="discover-shelf-title">Recently added</h2>
+          <TrackList tracks={recentlyAdded} onTrackDeleted={refreshTracks} />
+        </section>
       )}
-      <TrackList tracks={tracks} onTrackDeleted={refreshTracks} />
+      {recentlyPlayed.length > 0 && (
+        <section className="discover-shelf">
+          <h2 className="discover-shelf-title">Recently played</h2>
+          <TrackList tracks={recentlyPlayed} onTrackDeleted={refreshTracks} />
+        </section>
+      )}
+      {tracks.length > 0 && (
+        <section className="discover-shelf">
+          <div className="discover-shelf-header">
+            <h2 className="discover-shelf-title">All tracks</h2>
+            <button className="btn-secondary play-all-btn" onClick={() => playTrack(tracks[0], tracks)}>
+              ▶ Play all
+            </button>
+          </div>
+          <TrackList tracks={tracks} onTrackDeleted={refreshTracks} />
+        </section>
+      )}
+      {tracks.length === 0 && <TrackList tracks={tracks} onTrackDeleted={refreshTracks} />}
     </div>
   );
 }

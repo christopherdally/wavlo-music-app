@@ -122,4 +122,9 @@ export const api = {
 
   syncSmb: () =>
     fetch(`${BASE}/storage/smb/sync`, { method: 'POST', headers: authHeaders() }).then(handle),
+
+  getSmbSyncStatus: () =>
+    fetch(`${BASE}/storage/smb/sync/status`, { headers: authHeaders() }).then(handle),
+
+  getDuplicates: () => fetch(`${BASE}/tracks/duplicates`, { headers: authHeaders() }).then(handle),
 };

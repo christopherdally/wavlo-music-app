@@ -39,6 +39,7 @@ export default function Shell({ children }) {
           <NavLink to="/artists">Artists</NavLink>
           <NavLink to="/search">Search</NavLink>
           <NavLink to="/downloads">Downloads</NavLink>
+          <NavLink to="/duplicates">Duplicates</NavLink>
         </nav>
         <div className="sidebar-playlists-header">
           <span>Playlists</span>
