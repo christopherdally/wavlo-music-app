@@ -127,4 +127,21 @@ export const api = {
     fetch(`${BASE}/storage/smb/sync/status`, { headers: authHeaders() }).then(handle),
 
   getDuplicates: () => fetch(`${BASE}/tracks/duplicates`, { headers: authHeaders() }).then(handle),
+
+  getArtistInfo: (name, { refresh } = {}) =>
+    fetch(`${BASE}/artists/${encodeURIComponent(name)}/info${refresh ? '?refresh=true' : ''}`, {
+      headers: authHeaders(),
+    }).then(handle),
+
+  updateArtistInfo: (name, { bio, photoUrl }) =>
+    fetch(`${BASE}/artists/${encodeURIComponent(name)}/info`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ bio, photoUrl }),
+    }).then(handle),
+
+  resetArtistInfo: (name) =>
+    fetch(`${BASE}/artists/${encodeURIComponent(name)}/info`, { method: 'DELETE', headers: authHeaders() }).then(
+      handle
+    ),
 };

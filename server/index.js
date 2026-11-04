@@ -17,7 +17,9 @@ const storage = require('./storage');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// Default 100kb is too small for a manually-uploaded artist photo sent as a
+// base64 data URL in the JSON body.
+app.use(express.json({ limit: '5mb' }));
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -575,6 +577,84 @@ app.get('/api/tracks/:id/stream', async (req, res) => {
   const track = db.prepare('SELECT * FROM tracks WHERE id = ?').get(req.params.id);
   if (!track) return res.status(404).end();
   await storage.streamFile(track.storage, track.filename, req.headers.range, res);
+});
+
+// ---------- Artists (bio/photo, manual or auto-fetched from Wikipedia) ----------
+
+// No API key needed — Wikipedia's search + REST summary endpoints are public.
+// Best-effort only: an artist with no matching page, or a network hiccup,
+// just means no auto bio/photo, not an error surfaced to the user.
+async function fetchWikipediaArtistInfo(artistName) {
+  const headers = { 'User-Agent': 'Wavlo/1.0 (self-hosted music app)' };
+  const searchUrl =
+    'https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srlimit=1&srsearch=' +
+    encodeURIComponent(artistName);
+  const searchRes = await fetch(searchUrl, { headers });
+  if (!searchRes.ok) return null;
+  const searchData = await searchRes.json();
+  const title = searchData?.query?.search?.[0]?.title;
+  if (!title) return null;
+
+  const summaryRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`, {
+    headers,
+  });
+  if (!summaryRes.ok) return null;
+  const summary = await summaryRes.json();
+  if (!summary.extract) return null;
+  return { bio: summary.extract, photoUrl: summary.thumbnail?.source || null };
+}
+
+function artistInfoToJson(row) {
+  return { bio: row?.bio || null, photoUrl: row?.photo_url || null, source: row?.source || null };
+}
+
+app.get('/api/artists/:name/info', requireAuth, async (req, res) => {
+  const artist = req.params.name;
+  const existing = db
+    .prepare('SELECT * FROM artist_info WHERE user_id = ? AND artist = ?')
+    .get(req.user.id, artist);
+  if (existing && req.query.refresh !== 'true') {
+    return res.json(artistInfoToJson(existing));
+  }
+  if (existing?.source === 'manual') {
+    return res.json(artistInfoToJson(existing));
+  }
+
+  let fetched = null;
+  try {
+    fetched = await fetchWikipediaArtistInfo(artist);
+  } catch (err) {
+    console.error(`Wikipedia lookup failed for "${artist}": ${err.message}`);
+  }
+
+  if (fetched) {
+    db.prepare(
+      `INSERT INTO artist_info (user_id, artist, bio, photo_url, source, updated_at)
+       VALUES (?, ?, ?, ?, 'wikipedia', datetime('now'))
+       ON CONFLICT(user_id, artist) DO UPDATE SET
+         bio = excluded.bio, photo_url = excluded.photo_url, source = 'wikipedia', updated_at = datetime('now')`
+    ).run(req.user.id, artist, fetched.bio, fetched.photoUrl);
+    return res.json({ bio: fetched.bio, photoUrl: fetched.photoUrl, source: 'wikipedia' });
+  }
+
+  res.json({ bio: null, photoUrl: null, source: null });
+});
+
+app.put('/api/artists/:name/info', requireAuth, (req, res) => {
+  const artist = req.params.name;
+  const { bio, photoUrl } = req.body;
+  db.prepare(
+    `INSERT INTO artist_info (user_id, artist, bio, photo_url, source, updated_at)
+     VALUES (?, ?, ?, ?, 'manual', datetime('now'))
+     ON CONFLICT(user_id, artist) DO UPDATE SET
+       bio = excluded.bio, photo_url = excluded.photo_url, source = 'manual', updated_at = datetime('now')`
+  ).run(req.user.id, artist, bio || null, photoUrl || null);
+  res.json({ bio: bio || null, photoUrl: photoUrl || null, source: 'manual' });
+});
+
+app.delete('/api/artists/:name/info', requireAuth, (req, res) => {
+  db.prepare('DELETE FROM artist_info WHERE user_id = ? AND artist = ?').run(req.user.id, req.params.name);
+  res.json({ ok: true });
 });
 
 // ---------- Playlists ----------

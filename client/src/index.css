@@ -337,6 +337,73 @@ input {
   margin: 0;
 }
 
+/* ---------- Artist profile ---------- */
+
+.artist-profile {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.artist-photo {
+  flex: 0 0 160px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-highlight);
+}
+
+.artist-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.artist-bio-block {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.artist-bio-text {
+  margin: 0;
+  color: var(--text-subdued);
+  line-height: 1.5;
+}
+
+.artist-bio-input {
+  width: 100%;
+  background: var(--bg-highlight);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.artist-photo-upload {
+  display: inline-block;
+  width: fit-content;
+  cursor: pointer;
+}
+
+.artist-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.artist-info-source {
+  font-size: 12px;
+  color: var(--text-subdued);
+  text-transform: capitalize;
+}
+
 /* ---------- Discover page ---------- */
 
 .discover-shelf {

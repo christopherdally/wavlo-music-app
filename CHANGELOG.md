@@ -113,6 +113,15 @@ See `ai_rules.md` for how and when entries here should be added.
   bar — indeterminate while scanning, determinate while linking — and picks up polling for a
   sync already in progress on page load (started from another tab, or by the server's own
   `SMB_SYNC_INTERVAL_MINUTES` timer), instead of only ones it starts itself.
+- Home page gained **Recently added** and **Recently played** shelves (same shelf pattern as
+  Discover) above the full track list.
+- Artist pages now show a bio and photo: `GET /api/artists/:name/info` auto-fetches both from
+  Wikipedia's public search + REST summary endpoints (no API key) the first time an artist is
+  opened, and caches the result (new `artist_info` table) so it isn't re-fetched on every view.
+  An "Edit info" form lets you override either field per artist — write your own bio and/or
+  upload your own photo (stored as a data URL, same pattern as track cover art) — with a "Reset
+  to Wikipedia" link to drop the override and go back to auto-fetched info. A failed/no-match
+  lookup just means no bio/photo shown, never an error.
 
 ### Changed
 

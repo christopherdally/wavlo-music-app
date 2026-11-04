@@ -13,7 +13,10 @@ different slices of your own library — recently added, random picks, most play
 haven't heard in a while — no external catalog involved, since this is a personal library, not a
 streaming service. Duplicate tracks are hard-blocked at upload/link time (same file linked twice,
 same content re-uploaded, or same title+artist re-added under a different file), and a
-**Duplicates** page can scan your existing library for ones that slipped in before.
+**Duplicates** page can scan your existing library for ones that slipped in before. Artist pages
+show a bio and photo, auto-fetched from Wikipedia the first time you open an artist (no API key
+needed) and cached from then on — override either with your own text/photo any time, or reset
+back to the auto-fetched version.
 
 ## Stack
 

@@ -54,6 +54,16 @@ CREATE TABLE IF NOT EXISTS playlist_tracks (
   position INTEGER NOT NULL,
   PRIMARY KEY (playlist_id, track_id)
 );
+
+CREATE TABLE IF NOT EXISTS artist_info (
+  user_id TEXT NOT NULL REFERENCES users(id),
+  artist TEXT NOT NULL,
+  bio TEXT,
+  photo_url TEXT,
+  source TEXT NOT NULL DEFAULT 'manual',
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, artist)
+);
 `);
 
 // Lightweight migration for columns added after the initial release.
