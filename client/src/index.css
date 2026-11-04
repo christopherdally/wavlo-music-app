@@ -376,14 +376,23 @@ input {
 }
 
 .track-cover img,
-.cover-placeholder,
-.np-cover img,
-.np-cover .cover-placeholder {
+.np-cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   border-radius: 3px;
-  background: #333;
+}
+
+.cover-placeholder,
+.np-cover .cover-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  background-color: #2a2a2a;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555'%3E%3Cpath d='M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 45%;
 }
 
 .track-meta {
@@ -623,6 +632,26 @@ input {
 
 .crumb:hover {
   color: var(--text);
+}
+
+.bulk-link-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: var(--bg-highlight);
+  border-radius: 6px;
+}
+
+.bulk-select-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-subdued);
+  cursor: pointer;
 }
 
 .bucket-browser {

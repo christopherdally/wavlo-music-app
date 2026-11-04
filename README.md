@@ -44,8 +44,9 @@ By default, uploads are stored on local disk at `server/uploads/`. You can plug 
 2. **Linking existing content.** Whenever S3 credentials are configured (regardless of
    `STORAGE_DRIVER`), a "Link from bucket" button appears in the library. It browses your bucket
    like a file manager and lets you register an existing audio file as a track without
-   re-uploading it. Deleting a linked track only removes it from your library — the object stays
-   in your bucket, since you don't necessarily own the only copy of it.
+   re-uploading it — one at a time, or select several (or an entire folder via "Select all") and
+   link them in one batch. Deleting a linked track only removes it from your library — the object
+   stays in your bucket, since you don't necessarily own the only copy of it.
 
 Configure via `server/.env`:
 
@@ -71,7 +72,8 @@ straight from the share, never copied onto the server. Works with a modern NAS (
 TrueNAS, etc.) or a Windows file share (SMB2/SMB3). Older SMB1-only devices aren't supported.
 
 Once configured, a "Link from SMB share" button appears in the library, letting you browse the
-share's folders and link audio files the same way as the S3 bucket browser.
+share's folders and link audio files the same way as the S3 bucket browser — including bulk
+selection (an entire folder at once via "Select all").
 
 Under the hood this shells out to the standard `smbclient`/`smbget` tools (from Samba's client
 package), not a JS SMB library — those turned out to be unreliable against real NTLMv2-only

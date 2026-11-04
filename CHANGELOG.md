@@ -49,6 +49,11 @@ See `ai_rules.md` for how and when entries here should be added.
   `GET /api/auth/config` (public, no auth) exposes this so the frontend can hide the "Sign up"
   link/page accordingly; `POST /api/auth/register` is also rejected server-side when disabled
   (not just hidden in the UI). Existing accounts can still log in as normal.
+- Bulk linking in `LinkFromRemoteModal` (both S3 and SMB, since they share it): checkboxes per
+  file, a "Select all in this folder" toggle, and a "Link selected" button that links everything
+  chosen in one batch with progress feedback, instead of one click per track.
+- A default placeholder icon (a music note, matching the app's palette) for tracks with no
+  embedded cover art, replacing the previous flat gray box.
 
 ### Changed
 
