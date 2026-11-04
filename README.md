@@ -1,5 +1,7 @@
 # Wavlo
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A self-hosted Spotify-style music player. Upload your own audio files, organize them into
 playlists, search your library, and stream with a Spotify-inspired dark UI (sidebar, library
 grid, scrubbing now-playing bar).
@@ -93,4 +95,9 @@ The app is then available at `http://localhost:8080` (or whatever `HTTP_PORT` yo
 - No copyrighted content is bundled — this app only plays audio files you upload or link yourself.
 - Data lives in `server/db/app.db` (SQLite); audio is in `server/uploads/` and/or your S3 bucket.
 - Set `JWT_SECRET` in `server/.env` (or the Docker/Dokploy environment) for production use.
-- See `CHANGELOG.md` for release history and `ai_rules.md` for how changes here get versioned.
+- See `CHANGELOG.md` for release history, `ROADMAP.md` for planned enhancements, and
+  `ai_rules.md` for how changes here get versioned.
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).

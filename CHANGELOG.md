@@ -16,6 +16,8 @@ See `ai_rules.md` for how and when entries here should be added.
 - App version number displayed in the sidebar footer, sourced from `client/package.json`.
 - Docker deployment: `server/Dockerfile`, `client/Dockerfile` (+ nginx config), and a root
   `docker-compose.yml` for running the full stack (and for one-click deploys on Dokploy).
+- MIT `LICENSE`.
+- `ROADMAP.md` listing planned enhancements and known limitations.
 
 ### Fixed
 
