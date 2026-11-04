@@ -547,6 +547,35 @@ input {
   background: #3a3a3a;
 }
 
+/* ---------- File info modal ---------- */
+
+.file-info-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.file-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.file-info-row:last-child {
+  border-bottom: none;
+}
+
+.file-info-label {
+  color: var(--text-subdued);
+}
+
+.file-info-value {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
 .track-menu button.danger {
   color: #ff6b6b;
 }

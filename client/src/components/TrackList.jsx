@@ -3,6 +3,7 @@ import { usePlayer } from '../context/PlayerContext';
 import { useLibrary } from '../context/LibraryContext';
 import { useOffline } from '../context/OfflineContext';
 import { api } from '../api';
+import TrackInfoModal from './TrackInfoModal';
 
 function formatDuration(sec) {
   if (!sec) return '--:--';
@@ -18,6 +19,7 @@ export default function TrackList({ tracks, onTrackDeleted, playlistId, onRemove
   const { playlists, deleteTrack } = useLibrary();
   const { downloadedIds, pendingIds, downloadTrack, removeDownload } = useOffline();
   const [menuTrackId, setMenuTrackId] = useState(null);
+  const [infoTrack, setInfoTrack] = useState(null);
 
   async function handleAddToPlaylist(playlistId, trackId) {
     try {
@@ -94,6 +96,14 @@ export default function TrackList({ tracks, onTrackDeleted, playlistId, onRemove
               </button>
               {menuTrackId === track.id && (
                 <div className="track-menu">
+                  <button
+                    onClick={() => {
+                      setInfoTrack(track);
+                      setMenuTrackId(null);
+                    }}
+                  >
+                    File info
+                  </button>
                   <div className="track-menu-label">Add to playlist</div>
                   {playlists.map((p) => (
                     <button key={p.id} onClick={() => handleAddToPlaylist(p.id, track.id)}>
@@ -120,6 +130,7 @@ export default function TrackList({ tracks, onTrackDeleted, playlistId, onRemove
           </div>
         );
       })}
+      {infoTrack && <TrackInfoModal track={infoTrack} onClose={() => setInfoTrack(null)} />}
     </div>
   );
 }

@@ -62,6 +62,15 @@ See `ai_rules.md` for how and when entries here should be added.
   file's path, null for uploads) to support the fallback grouping. Verified end-to-end: album-tag
   grouping, folder-fallback grouping for untagged SMB-linked tracks, and the "Other Tracks"
   catch-all all group correctly.
+- "File info" dialog (from a track's `⋯` menu): real format details — container, codec,
+  bitrate, sample rate, channel count, lossless/lossy, file size, storage backend, source
+  (uploaded vs. linked), the file's storage location/path, and when it was added — not just
+  title/artist/album. Captured once at upload/link time (DB migration adds `file_size`,
+  `bitrate`, `sample_rate`, `channels`, `codec`, `container`, `lossless` columns) so viewing it
+  is instant, no re-fetch from S3/SMB needed. Verified against real MP3 (lossy) and FLAC
+  (lossless) files — bitrate, sample rate, channels, and the lossless/lossy distinction all read
+  back exactly as encoded — and confirmed the migration preserves existing tracks untouched when
+  applied to a pre-this-feature database.
 
 ### Changed
 

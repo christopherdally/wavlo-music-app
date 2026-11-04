@@ -28,6 +28,13 @@ CREATE TABLE IF NOT EXISTS tracks (
   storage TEXT NOT NULL DEFAULT 'local',
   source TEXT NOT NULL DEFAULT 'uploaded',
   cover_data TEXT,
+  file_size INTEGER,
+  bitrate INTEGER,
+  sample_rate INTEGER,
+  channels INTEGER,
+  codec TEXT,
+  container TEXT,
+  lossless INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -53,6 +60,16 @@ if (!existingColumns.includes('storage')) {
 }
 if (!existingColumns.includes('source')) {
   db.exec("ALTER TABLE tracks ADD COLUMN source TEXT NOT NULL DEFAULT 'uploaded'");
+}
+for (const column of ['file_size', 'bitrate', 'sample_rate', 'channels', 'lossless']) {
+  if (!existingColumns.includes(column)) {
+    db.exec(`ALTER TABLE tracks ADD COLUMN ${column} INTEGER`);
+  }
+}
+for (const column of ['codec', 'container']) {
+  if (!existingColumns.includes(column)) {
+    db.exec(`ALTER TABLE tracks ADD COLUMN ${column} TEXT`);
+  }
 }
 
 module.exports = db;

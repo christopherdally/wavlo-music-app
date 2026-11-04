@@ -102,7 +102,20 @@ function trackToJson(t) {
     streamUrl: `/api/tracks/${t.id}/stream`,
     storage: t.storage,
     source: t.source,
+    // The storage key/path — e.g. "Albums/2024/track.mp3" for a linked S3/SMB
+    // file, or "uploads/<uuid>.mp3" for an upload. Not sensitive: for linked
+    // tracks it's exactly the path the user picked while browsing to link it.
+    location: t.filename,
     createdAt: t.created_at,
+    fileInfo: {
+      fileSize: t.file_size,
+      bitrate: t.bitrate,
+      sampleRate: t.sample_rate,
+      channels: t.channels,
+      codec: t.codec,
+      container: t.container,
+      lossless: t.lossless == null ? null : Boolean(t.lossless),
+    },
   };
 }
 
@@ -117,6 +130,13 @@ function extractMetadataFromBuffer(buffer, mimetype, fallbackTitle) {
         album: meta.common.album || null,
         duration: meta.format.duration || null,
         coverData: pic ? `data:${pic.format};base64,${Buffer.from(pic.data).toString('base64')}` : null,
+        fileSize: buffer.length,
+        bitrate: meta.format.bitrate ? Math.round(meta.format.bitrate) : null,
+        sampleRate: meta.format.sampleRate || null,
+        channels: meta.format.numberOfChannels || null,
+        codec: meta.format.codec || null,
+        container: meta.format.container || null,
+        lossless: meta.format.lossless == null ? null : meta.format.lossless,
       };
     })
     .catch(() => ({
@@ -125,6 +145,13 @@ function extractMetadataFromBuffer(buffer, mimetype, fallbackTitle) {
       album: null,
       duration: null,
       coverData: null,
+      fileSize: buffer.length,
+      bitrate: null,
+      sampleRate: null,
+      channels: null,
+      codec: null,
+      container: null,
+      lossless: null,
     }));
 }
 
@@ -140,9 +167,28 @@ app.post('/api/tracks/upload', requireAuth, upload.single('file'), async (req, r
 
     const id = uuid();
     db.prepare(
-      `INSERT INTO tracks (id, user_id, title, artist, album, duration, filename, storage, source, cover_data)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'uploaded', ?)`
-    ).run(id, req.user.id, meta.title, meta.artist, meta.album, meta.duration, stored.key, stored.storage, meta.coverData);
+      `INSERT INTO tracks (
+         id, user_id, title, artist, album, duration, filename, storage, source, cover_data,
+         file_size, bitrate, sample_rate, channels, codec, container, lossless
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'uploaded', ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      id,
+      req.user.id,
+      meta.title,
+      meta.artist,
+      meta.album,
+      meta.duration,
+      stored.key,
+      stored.storage,
+      meta.coverData,
+      meta.fileSize,
+      meta.bitrate,
+      meta.sampleRate,
+      meta.channels,
+      meta.codec,
+      meta.container,
+      meta.lossless == null ? null : meta.lossless ? 1 : 0
+    );
 
     const track = db.prepare('SELECT * FROM tracks WHERE id = ?').get(id);
     res.json(trackToJson(track));
@@ -185,30 +231,62 @@ app.post('/api/tracks/link', requireAuth, async (req, res) => {
   if (source === 'smb' && !storage.smbEnabled) return res.status(400).json({ error: 'SMB is not configured' });
   if (source === 's3' && !storage.s3Enabled) return res.status(400).json({ error: 'S3 is not configured' });
 
-  if (source === 's3') {
-    try {
-      await storage.headS3Object(key);
-    } catch {
-      return res.status(404).json({ error: 'Object not found in bucket' });
-    }
+  let fileSize = null;
+  try {
+    fileSize = (await storage.headObject(source, key)).size;
+  } catch {
+    return res.status(404).json({ error: 'Object not found' });
   }
 
   const fallbackTitle = path.parse(key).name;
-  let meta = { title: fallbackTitle, artist: 'Unknown Artist', album: null, duration: null, coverData: null };
+  let meta = {
+    title: fallbackTitle,
+    artist: 'Unknown Artist',
+    album: null,
+    duration: null,
+    coverData: null,
+    fileSize,
+    bitrate: null,
+    sampleRate: null,
+    channels: null,
+    codec: null,
+    container: null,
+    lossless: null,
+  };
   try {
     const buffer = await storage.fetchObjectBuffer(source, key);
     if (buffer) {
       meta = await extractMetadataFromBuffer(buffer, undefined, fallbackTitle);
     }
   } catch {
-    // Best-effort metadata; fall back to filename-derived title.
+    // Best-effort metadata; fall back to filename-derived title and the file
+    // size we already have from the head/stat check above.
   }
 
   const id = uuid();
   db.prepare(
-    `INSERT INTO tracks (id, user_id, title, artist, album, duration, filename, storage, source, cover_data)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'linked', ?)`
-  ).run(id, req.user.id, meta.title, meta.artist, meta.album, meta.duration, key, source, meta.coverData);
+    `INSERT INTO tracks (
+       id, user_id, title, artist, album, duration, filename, storage, source, cover_data,
+       file_size, bitrate, sample_rate, channels, codec, container, lossless
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'linked', ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    req.user.id,
+    meta.title,
+    meta.artist,
+    meta.album,
+    meta.duration,
+    key,
+    source,
+    meta.coverData,
+    meta.fileSize,
+    meta.bitrate,
+    meta.sampleRate,
+    meta.channels,
+    meta.codec,
+    meta.container,
+    meta.lossless == null ? null : meta.lossless ? 1 : 0
+  );
 
   const track = db.prepare('SELECT * FROM tracks WHERE id = ?').get(id);
   res.json(trackToJson(track));

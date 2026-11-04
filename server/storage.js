@@ -155,6 +155,16 @@ async function headS3Object(key) {
   return { size: result.ContentLength, contentType: result.ContentType };
 }
 
+async function headObject(storageType, key) {
+  if (storageType === 's3') return headS3Object(key);
+  if (storageType === 'smb') {
+    const stat = await smb.statFile(key);
+    return { size: stat.size };
+  }
+  const stat = fs.statSync(path.join(UPLOAD_DIR, key));
+  return { size: stat.size };
+}
+
 async function fetchObjectBuffer(storage, key) {
   if (storage === 's3') {
     const head = await headS3Object(key);
@@ -201,6 +211,7 @@ module.exports = {
   deleteStored,
   streamFile,
   fetchObjectBuffer,
+  headObject,
   headS3Object,
   browseBucket,
   smbEnabled: smb.smbEnabled,
