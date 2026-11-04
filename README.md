@@ -4,7 +4,9 @@
 
 A self-hosted Spotify-style music player. Upload your own audio files, organize them into
 playlists, search your library, and stream with a Spotify-inspired dark UI (sidebar, library
-grid, scrubbing now-playing bar).
+grid, scrubbing now-playing bar). An **Albums** page automatically groups tracks that share an
+album tag — or, for tracks linked in from S3/SMB, that came from the same source folder — without
+any manual organizing.
 
 ## Stack
 

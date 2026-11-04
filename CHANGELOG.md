@@ -54,6 +54,14 @@ See `ai_rules.md` for how and when entries here should be added.
   chosen in one batch with progress feedback, instead of one click per track.
 - A default placeholder icon (a music note, matching the app's palette) for tracks with no
   embedded cover art, replacing the previous flat gray box.
+- New **Albums** page: groups tracks by album tag when present, falling back to the source
+  folder for tracks linked in from S3/SMB without one (uploads with no album tag land in a
+  catch-all "Other Tracks" group). Each group shows as a card (cover art from its first tagged
+  track, artist, track count); clicking opens a detail view with the usual `TrackList` and "Play
+  all". Backend exposes a new `folder` field per track (derived server-side from the linked
+  file's path, null for uploads) to support the fallback grouping. Verified end-to-end: album-tag
+  grouping, folder-fallback grouping for untagged SMB-linked tracks, and the "Other Tracks"
+  catch-all all group correctly.
 
 ### Changed
 

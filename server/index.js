@@ -80,12 +80,23 @@ app.get('/api/me', requireAuth, (req, res) => {
 
 // ---------- Tracks ----------
 
+function folderOf(track) {
+  // Only linked tracks (S3/SMB) have a meaningful source path — uploaded
+  // tracks' filename is just an opaque storage key (uploads/<uuid>.ext), not
+  // a folder a human organized. A root-level linked file (no containing
+  // folder) also yields no grouping.
+  if (track.source !== 'linked') return null;
+  const dir = path.dirname(track.filename);
+  return dir === '.' || dir === '/' ? null : dir;
+}
+
 function trackToJson(t) {
   return {
     id: t.id,
     title: t.title,
     artist: t.artist,
     album: t.album,
+    folder: folderOf(t),
     duration: t.duration,
     coverUrl: t.cover_data ? `/api/tracks/${t.id}/cover` : null,
     streamUrl: `/api/tracks/${t.id}/stream`,

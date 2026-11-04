@@ -34,6 +34,7 @@ export default function Shell({ children }) {
           <NavLink to="/" end>
             Home
           </NavLink>
+          <NavLink to="/albums">Albums</NavLink>
           <NavLink to="/search">Search</NavLink>
           <NavLink to="/downloads">Downloads</NavLink>
         </nav>

@@ -272,6 +272,71 @@ input {
   margin-bottom: 16px;
 }
 
+/* ---------- Albums page ---------- */
+
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 20px;
+}
+
+.album-card {
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+}
+
+.album-card:hover {
+  background: var(--bg-highlight);
+}
+
+.album-card-cover {
+  width: 100%;
+  aspect-ratio: 1;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.album-card-cover img,
+.album-card-cover .cover-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.album-card-label {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.album-card-subtitle {
+  font-size: 12px;
+  color: var(--text-subdued);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.album-detail-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.album-detail-heading .icon-btn {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.album-detail-heading h1 {
+  margin: 0;
+}
+
 /* ---------- Buttons ---------- */
 
 .btn-primary {
