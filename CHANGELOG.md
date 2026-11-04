@@ -37,6 +37,13 @@ See `ai_rules.md` for how and when entries here should be added.
   (scrubbing) work after the initial download. Configure via `SMB_HOST`/`SMB_SHARE`/
   `SMB_USERNAME`/`SMB_PASSWORD` (+ optional `SMB_DOMAIN`/`SMB_PORT`). The "Link from bucket"
   modal was generalized into a reusable `LinkFromRemoteModal` shared by both S3 and SMB.
+- SMB cache eviction: `server/smb-cache/` is now capped (`SMB_CACHE_MAX_MB`, default 2048) with
+  LRU eviction — every read touches the file's access time, and whenever a new download pushes
+  the cache over the cap, the least-recently-played files are deleted (possibly several at once)
+  until it's back under. Runs in the background after each download, never on the read path.
+  Verified against a live Samba test server: cascading multi-file eviction and touch-on-read LRU
+  refresh (a re-played older track survives eviction over a never-replayed newer one) both work
+  as designed.
 
 ### Changed
 
@@ -53,6 +60,13 @@ See `ai_rules.md` for how and when entries here should be added.
 
 ### Fixed
 
+- A failed SMB download (e.g. file removed from the share mid-fetch, connection drop) left a
+  stale 0-byte `.downloading-*` temp file behind in `server/smb-cache/` forever. Now cleaned up
+  on error.
+- The temp filename used while downloading an SMB file wasn't unique across concurrent requests
+  for the same not-yet-cached track within one server process (used only `process.pid`, constant
+  for the process); two such requests could collide writing to the same temp file. Now includes a
+  random suffix per download attempt.
 - Docker builds (both `server/Dockerfile` and the root single-container `Dockerfile`) failed
   on `npm ci` with a `node-gyp`/`better-sqlite3` compile error on platforms/architectures with
   no matching prebuilt binary (seen on a Dokploy build). The `node:20-alpine` base image has no

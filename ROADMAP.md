@@ -38,9 +38,6 @@ See `CHANGELOG.md` for what's already shipped and `ai_rules.md` for how changes 
       failing outright.
 - [ ] **S3 migration tool** — move existing local-disk tracks to S3 (or back) from the UI instead
       of only choosing a backend at upload time.
-- [ ] **SMB cache eviction** — `server/smb-cache/` (the local copy of each SMB-linked track,
-      downloaded on first play) currently grows unbounded. Add an LRU eviction policy or a size
-      cap/TTL.
 - [ ] **Automated tests + CI** — unit tests for the API, a basic e2e smoke test, and a GitHub
       Actions workflow that runs them on PRs.
 

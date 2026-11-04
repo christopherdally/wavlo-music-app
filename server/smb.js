@@ -23,6 +23,14 @@ const smbEnabled = Boolean(HOST && SHARE && USERNAME && PASSWORD);
 const CACHE_DIR = path.join(__dirname, 'smb-cache');
 if (smbEnabled) fs.mkdirSync(CACHE_DIR, { recursive: true });
 
+// smbget has no partial/range-download mode, so each linked track is cached
+// in full locally on first play (see ensureCached below). Left unbounded,
+// that cache would grow forever, so it's capped with simple LRU eviction:
+// every cache hit/miss touches the file's mtime, and whenever a new file is
+// downloaded we prune the least-recently-used files until back under the cap.
+const CACHE_MAX_BYTES = (process.env.SMB_CACHE_MAX_MB ? Number(process.env.SMB_CACHE_MAX_MB) : 2048) * 1024 * 1024;
+const DOWNLOADING_SUFFIX_RE = /\.downloading-\d+-[0-9a-f]+$/;
+
 function status() {
   return { smbConfigured: smbEnabled, host: smbEnabled ? HOST : null, share: smbEnabled ? SHARE : null };
 }
@@ -134,13 +142,61 @@ function cachePathFor(filePath) {
   return path.join(CACHE_DIR, `${hash}${ext}`);
 }
 
+function touch(filePath) {
+  const now = new Date();
+  fs.utimes(filePath, now, now, () => {});
+}
+
+// Prunes the least-recently-used cached files until the cache is back under
+// its size cap. Runs in the background (fire-and-forget) after a new
+// download — never on the hot read path.
+async function evictIfNeeded() {
+  let names;
+  try {
+    names = await fs.promises.readdir(CACHE_DIR);
+  } catch {
+    return;
+  }
+
+  const files = [];
+  let totalBytes = 0;
+  for (const name of names) {
+    if (DOWNLOADING_SUFFIX_RE.test(name)) continue; // skip in-flight downloads
+    const filePath = path.join(CACHE_DIR, name);
+    let stat;
+    try {
+      stat = await fs.promises.stat(filePath);
+    } catch {
+      continue; // deleted/renamed concurrently — fine, skip it
+    }
+    files.push({ filePath, size: stat.size, mtime: stat.mtimeMs });
+    totalBytes += stat.size;
+  }
+
+  if (totalBytes <= CACHE_MAX_BYTES) return;
+
+  files.sort((a, b) => a.mtime - b.mtime); // oldest-accessed first
+  for (const file of files) {
+    if (totalBytes <= CACHE_MAX_BYTES) break;
+    try {
+      await fs.promises.unlink(file.filePath);
+      totalBytes -= file.size;
+    } catch {
+      // Already gone, or mid-read elsewhere — leave it for the next pass.
+    }
+  }
+}
+
 // Downloads the whole file once via `smbget` into a local cache, then every
 // read (including HTTP range requests for seeking) is served from that local
 // copy. smbget has no partial/range-download mode, so true range support
 // only kicks in after the first full fetch.
 async function ensureCached(filePath) {
   const dest = cachePathFor(filePath);
-  if (fs.existsSync(dest)) return dest;
+  if (fs.existsSync(dest)) {
+    touch(dest);
+    return dest;
+  }
 
   assertSafePath(filePath);
   const smbPath = filePath.replace(/^\/+/, '');
@@ -151,21 +207,27 @@ async function ensureCached(filePath) {
     .map(encodeURIComponent)
     .join('/')}`;
 
-  const tmpDest = `${dest}.downloading-${process.pid}`;
-  await new Promise((resolve, reject) => {
-    const child = spawn('smbget', ['-q', '--stdout', url]);
-    const out = fs.createWriteStream(tmpDest);
-    let stderr = '';
-    child.stdout.pipe(out);
-    child.stderr.on('data', (d) => (stderr += d));
-    child.on('error', reject);
-    child.on('close', (code) => {
-      out.close();
-      if (code !== 0) return reject(new Error(describeSmbError(stderr) || `smbget exited with code ${code}`));
-      resolve();
+  const tmpDest = `${dest}.downloading-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
+  try {
+    await new Promise((resolve, reject) => {
+      const child = spawn('smbget', ['-q', '--stdout', url]);
+      const out = fs.createWriteStream(tmpDest);
+      let stderr = '';
+      child.stdout.pipe(out);
+      child.stderr.on('data', (d) => (stderr += d));
+      child.on('error', reject);
+      child.on('close', (code) => {
+        out.close();
+        if (code !== 0) return reject(new Error(describeSmbError(stderr) || `smbget exited with code ${code}`));
+        resolve();
+      });
     });
-  });
+  } catch (err) {
+    fs.unlink(tmpDest, () => {}); // don't leave a stale 0-byte temp file behind
+    throw err;
+  }
   fs.renameSync(tmpDest, dest);
+  evictIfNeeded().catch(() => {});
   return dest;
 }
 
